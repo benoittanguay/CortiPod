@@ -11,11 +11,13 @@
 // ---------------------------------------------------------------------------
 // Electrode configuration
 // ---------------------------------------------------------------------------
-// Each electrode is contacted by a ring of pogo pins; two electrodes are
-// present in the assembly: MIP (cortisol-selective) and NIP (control/reference).
-#define POGO_COUNT_PER_ELECTRODE    4
+// Two electrodes connected via upward-facing spring contacts in the bottom shell:
+// MIP (cortisol-selective) and NIP (control/reference).
+// Each electrode has 3 active pads: WE, CE, REF.
+// Spring contacts (pogo pins) press up against the downward-facing pads.
+// Signals route to PCB via flex cable through sealed parting-line pass-through.
 #define ELECTRODE_COUNT             2
-#define POGO_TOTAL                  (POGO_COUNT_PER_ELECTRODE * ELECTRODE_COUNT)  // 8
+#define PADS_PER_ELECTRODE          3   // WE, CE, REF
 
 // ---------------------------------------------------------------------------
 // AD5941 switch matrix — working electrode selection

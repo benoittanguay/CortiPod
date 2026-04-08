@@ -1,45 +1,43 @@
 // =============================================================================
 // top_shell.scad — CortiPod main enclosure ("brain unit")
 //
-// Houses all electronics. Pogo pins protrude from bottom face.
-// Snap clips extend below to grip the bottom shell.
+// Houses PCB and battery. FULLY SEALED — no lever cutouts or openings.
+// Spring contacts are in the bottom shell; flex cable routes signals
+// to the PCB through a sealed pass-through at the parting line.
 //
-// Pogo pin layout: 8 pins total — 4 per electrode (WE, CE, REF, GND).
-//   MIP electrode: 4 pins on the negative-Y side of centre
-//   NIP electrode: 4 pins on the positive-Y side of centre
+// Engineering features:
+//   - Corrected O-ring groove (1.5mm wide x 0.75mm deep for 1.0mm CS O-ring)
+//   - Alignment pins for shell-to-shell registration (asymmetric poka-yoke)
+//   - Snap-fit beams: 5mm length (>= 5x 0.8mm thickness), tapered 50% at tip
+//   - No ZIF lever cutout — eliminated for better IP67 sealing
 //
 // Print: TOP face down (smooth outer surface on build plate)
 // =============================================================================
 
 include <parameters.scad>
 
-$fn = 60;
+// Adaptive resolution: fast preview, smooth export
+$fn = $preview ? 32 : 96;
 
 module top_shell() {
     difference() {
         union() {
-            // Main shell body
             shell_body();
-
-            // Snap-fit clips (extend below the shell)
             snap_fit_clips();
+            alignment_pins();
         }
 
         // Hollow out the cavity
         translate([0, 0, wall_thickness])
             internal_cavity();
 
-        // Pogo pin holes through the floor
-        pogo_pin_holes();
-
         // O-ring groove on the bottom mating face
         oring_groove();
     }
 
-    // PCB standoffs (placed INSIDE the cavity after the difference)
-    // This way they don't interfere with exterior geometry
+    // PCB standoffs inside the cavity (asymmetric for poka-yoke)
     intersection() {
-        shell_body(); // clip standoffs to shell boundary
+        shell_body();
         pcb_standoffs();
     }
 }
@@ -57,6 +55,7 @@ module shell_body() {
 // ---- Internal cavity ----
 module internal_cavity() {
     inset = wall_thickness;
+    inner_r = max(pod_corner_radius - inset + printer_tolerance, 0.5);
     cavity_h = top_shell_height - wall_thickness * 2 + 0.1;
 
     hull() {
@@ -65,92 +64,88 @@ module internal_cavity() {
             for (y = [-pod_width/2 + pod_corner_radius + inset,
                        pod_width/2 - pod_corner_radius - inset])
                 translate([x, y, 0])
-                    cylinder(r=pod_corner_radius - inset + printer_tolerance,
-                             h=cavity_h);
+                    cylinder(r=inner_r, h=cavity_h);
     }
 }
 
 // ---- PCB standoffs ----
-// Short posts rising from the floor inside the cavity
+// Asymmetric placement so PCB can only be installed one way (poka-yoke).
+// Three round standoffs + one slotted (accommodates thermal expansion).
 module pcb_standoffs() {
     standoff_height = 1.0;
     standoff_od = 3.0;
 
-    positions = [
+    round_positions = [
         [-pcb_length/2 + 3, -pcb_width/2 + 3],
         [-pcb_length/2 + 3,  pcb_width/2 - 3],
         [ pcb_length/2 - 3, -pcb_width/2 + 3],
-        [ pcb_length/2 - 3,  pcb_width/2 - 3],
     ];
 
-    for (pos = positions) {
+    for (pos = round_positions) {
         translate([pos[0], pos[1], wall_thickness])
             cylinder(d=standoff_od, h=standoff_height);
     }
+
+    // One slotted standoff (+X, +Y) — elongated along X for thermal expansion
+    translate([pcb_length/2 - 3, pcb_width/2 - 3, wall_thickness])
+        hull() {
+            cylinder(d=standoff_od, h=standoff_height);
+            translate([1.5, 0, 0])
+                cylinder(d=standoff_od, h=standoff_height);
+        }
 }
 
-// ---- Pogo pin holes ----
-// 8 holes total: 4 for the MIP electrode (negative Y), 4 for the NIP (positive Y).
-// Each set of 4 is centred over that electrode's contact pads along X, and
-// positioned at the Y-centre of each electrode pocket.
-//
-// pogo_count = 8, so pogo_count/2 = 4 pins per electrode.
-// Pins per electrode are arranged in a 0.1"-pitch row along X.
-module pogo_pin_holes() {
-    pins_per_electrode = pogo_count / 2;           // 4
-    row_span = (pins_per_electrode - 1) * pogo_spacing;
-    start_x  = -(row_span / 2);
+// ---- Alignment pins ----
+// Protrude from the bottom mating face into holes in the bottom shell.
+// Asymmetric placement prevents 180-degree assembly error.
+module alignment_pins() {
+    translate([align_pin1_x, align_pin1_y, -alignment_pin_height])
+        cylinder(d=alignment_pin_diameter, h=alignment_pin_height);
 
-    // X centre: align to the electrode's contact pads
-    pad_center_x = electrode_length/2 - electrode_pad_offset;
-
-    // Y centre of each electrode pocket
-    mip_y = -(electrode_gap/2 + electrode_width/2);
-    nip_y =   electrode_gap/2 + electrode_width/2;
-
-    for (i = [0 : pins_per_electrode - 1]) {
-        x = pad_center_x + start_x + i * pogo_spacing;
-
-        // MIP electrode holes
-        translate([x, mip_y, -0.1])
-            cylinder(d=pogo_pin_hole, h=wall_thickness + 0.2);
-
-        // NIP electrode holes
-        translate([x, nip_y, -0.1])
-            cylinder(d=pogo_pin_hole, h=wall_thickness + 0.2);
-    }
+    translate([align_pin2_x, align_pin2_y, -alignment_pin_height])
+        cylinder(d=alignment_pin_diameter, h=alignment_pin_height);
 }
 
 // ---- Snap-fit clips ----
-// Extend below the shell body to grip the bottom shell ledges
+// Cantilever beams extending below the shell body.
+// Tapered: 0.8mm at root, 0.4mm at tip for even stress distribution.
 module snap_fit_clips() {
-    arm_thickness = 0.8;
-    arm_length = bottom_shell_height + 1.0;
+    arm_length = clip_beam_length;
+    root_t = clip_beam_thickness;
+    tip_t  = clip_beam_thickness * 0.5;
 
-    // 4 clips: 2 per long edge, positioned within the pod footprint
     clip_x_positions = [
         -pod_length/2 + pod_corner_radius + 4,
          pod_length/2 - pod_corner_radius - 4 - clip_width,
     ];
 
     for (cx = clip_x_positions) {
-        // -Y side
-        translate([cx, -pod_width/2 + wall_thickness, -arm_length])
-            cube([clip_width, arm_thickness, arm_length]);
-        // -Y hook
-        translate([cx, -pod_width/2 + wall_thickness - clip_depth, -arm_length])
-            cube([clip_width, clip_depth, clip_depth]);
+        for (side = [-1, 1]) {
+            y_base = (side == -1)
+                ? -pod_width/2 + wall_thickness
+                :  pod_width/2 - wall_thickness - root_t;
 
-        // +Y side
-        translate([cx, pod_width/2 - wall_thickness - arm_thickness, -arm_length])
-            cube([clip_width, arm_thickness, arm_length]);
-        // +Y hook
-        translate([cx, pod_width/2 - wall_thickness, -arm_length])
-            cube([clip_width, clip_depth, clip_depth]);
+            // Tapered beam (root at top, tip at bottom)
+            translate([cx, y_base, -arm_length])
+                hull() {
+                    translate([0, 0, arm_length])
+                        cube([clip_width, root_t, 0.1]);
+                    translate([0, (root_t - tip_t) / 2, 0])
+                        cube([clip_width, tip_t, 0.1]);
+                }
+
+            // Hook at tip
+            hook_y = (side == -1)
+                ? y_base - clip_depth
+                : y_base + root_t;
+            translate([cx, hook_y, -arm_length])
+                cube([clip_width, clip_depth, clip_depth]);
+        }
     }
 }
 
 // ---- O-ring groove ----
+// For 1.0mm CS silicone O-ring: 1.5mm wide, 0.75mm deep (25% compression).
 module oring_groove() {
     groove_inset = wall_thickness / 2;
 
