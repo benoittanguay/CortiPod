@@ -905,25 +905,27 @@ Validate the complete system on a real human subject (yourself).
 | 12 | Pogo pins | Mill-Max 0906 series | DigiKey | 20 | $1.25 | $25.00 |
 | 13 | Magnetic charging connector | 2-pin pogo pair | AliExpress | 3 | $3.00 | $9.00 |
 | 14 | Custom PCB (5 pcs) | 35x20mm, 2-layer, ENIG | JLCPCB | 1 lot | $5.00 | $5.00 |
+| 15 | Jumper wires (M-F dupont) | 40-pin ribbon pack | Amazon | 1 | $5.00 | $5.00 |
+| 16 | Breadboard | Half-size solderless | Amazon | 1 | $5.00 | $5.00 |
 
-**Electronics subtotal: ~$375**
+**Electronics subtotal: ~$385**
 
 ### Chemistry / Sensor
 
 | # | Item | Part Number | Supplier | Qty | Unit Cost | Total |
 |---|------|-------------|----------|-----|-----------|-------|
-| 15 | Screen-printed gold electrodes | DRP-220AT (75-pack) | Metrohm DropSens | 1 pack | ~$400 | $400.00 |
+| 17 | Screen-printed gold electrodes | DRP-220AT (75-pack) | Metrohm DropSens | 1 pack | ~$400 | $400.00 |
 |    | *OR budget alternative:* Carbon SPEs | TE100 (40-pack) | Zensor/eDAQ | 1 pack | $83.00 | $83.00 |
-| 16 | Pyrrole monomer 100mL | Cat. 131709 | Sigma-Aldrich | 1 | $40.00 | $40.00 |
-| 17 | Hydrocortisone 1g | Cat. H4001 | Sigma-Aldrich | 1 | $35.00 | $35.00 |
-| 18 | PBS tablets | Cat. P4417 | Sigma-Aldrich | 1 | $15.00 | $15.00 |
-| 19 | Ethanol (reagent grade) | Cat. 459844 | Sigma-Aldrich | 1 | $25.00 | $25.00 |
-| 20 | Acetic acid (glacial) | Cat. A6283 | Sigma-Aldrich | 1 | $20.00 | $20.00 |
-| 21 | Gold chloride HAuCl4 | Cat. 520918 | Sigma-Aldrich | 1 | $80.00 | $80.00 |
-| 22 | Sulfuric acid 0.5M | Cat. 339741 | Sigma-Aldrich | 1 | $25.00 | $25.00 |
-| 23 | Micropipettes (set) | — | Amazon/Fisher | 1 | $75.00 | $75.00 |
-| 24 | Pipette tips (box) | — | Amazon | 1 | $15.00 | $15.00 |
-| 25 | Cortisol saliva test kits | Everlywell or ZRT | Amazon | 2 | $35.00 | $70.00 |
+| 18 | Pyrrole monomer 100mL | Cat. 131709 | Sigma-Aldrich | 1 | $40.00 | $40.00 |
+| 19 | Hydrocortisone 1g | Cat. H4001 | Sigma-Aldrich | 1 | $35.00 | $35.00 |
+| 20 | PBS tablets | Cat. P4417 | Sigma-Aldrich | 1 | $15.00 | $15.00 |
+| 21 | Ethanol (reagent grade) | Cat. 459844 | Sigma-Aldrich | 1 | $25.00 | $25.00 |
+| 22 | Acetic acid (glacial) | Cat. A6283 | Sigma-Aldrich | 1 | $20.00 | $20.00 |
+| 23 | Gold chloride HAuCl4 | Cat. 520918 | Sigma-Aldrich | 1 | $80.00 | $80.00 |
+| 24 | Sulfuric acid 0.5M | Cat. 339741 | Sigma-Aldrich | 1 | $25.00 | $25.00 |
+| 25 | Micropipettes (set) | — | Amazon/Fisher | 1 | $75.00 | $75.00 |
+| 26 | Pipette tips (box) | — | Amazon | 1 | $15.00 | $15.00 |
+| 27 | Cortisol saliva test kits | Everlywell or ZRT | Amazon | 2 | $35.00 | $70.00 |
 
 **Chemistry subtotal: ~$480 (with budget electrodes: ~$160)**
 
@@ -931,11 +933,11 @@ Validate the complete system on a real human subject (yourself).
 
 | # | Item | Supplier | Qty | Unit Cost | Total |
 |---|------|----------|-----|-----------|-------|
-| 26 | 3D printed enclosure set | JLCPCB / Shapeways | 5 | $8.00 | $40.00 |
-| 27 | Silicone strap (18mm) | Amazon | 3 | $6.00 | $18.00 |
-| 28 | Conformal coating | MG Chemicals 422B | 1 | $15.00 | $15.00 |
-| 29 | Silicone RTV gasket | Permatex 82180 | 1 | $8.00 | $8.00 |
-| 30 | Neodymium magnets | K&J Magnetics | 10 | $0.50 | $5.00 |
+| 28 | 3D printed enclosure set | JLCPCB / Shapeways | 5 | $8.00 | $40.00 |
+| 29 | Silicone strap (18mm) | Amazon | 3 | $6.00 | $18.00 |
+| 30 | Conformal coating | MG Chemicals 422B | 1 | $15.00 | $15.00 |
+| 31 | Silicone RTV gasket | Permatex 82180 | 1 | $8.00 | $8.00 |
+| 32 | Neodymium magnets | K&J Magnetics | 10 | $0.50 | $5.00 |
 
 **Mechanical subtotal: ~$86**
 
@@ -943,10 +945,10 @@ Validate the complete system on a real human subject (yourself).
 
 | Category | Budget Path | Premium Path |
 |----------|------------|-------------|
-| Electronics | $375 | $375 |
+| Electronics | $385 | $385 |
 | Chemistry / Sensor | $160 (carbon SPEs) | $480 (gold SPEs) |
 | Mechanical | $86 | $86 |
-| **Total** | **~$620** | **~$940** |
+| **Total** | **~$630** | **~$950** |
 
 ---
 
@@ -960,7 +962,7 @@ Validate the complete system on a real human subject (yourself).
 | **Metrohm DropSens** | Gold screen-printed electrodes (DRP-220AT) | metrohm-dropsens.com | Request quote, premium but best quality |
 | **Zensor R&D / eDAQ** | Budget carbon SPEs (TE100) | edaq.com | Cheaper, requires gold electrodeposition step |
 | **JLCPCB** | PCB fabrication + 3D printing | jlcpcb.com | Cheapest for small batches |
-| **Amazon** | Micropipettes, tips, gloves, straps, TP4056, RTV, misc | amazon.com | Convenience |
+| **Amazon** | Micropipettes, tips, gloves, straps, TP4056, RTV, jumper wires, breadboard, misc | amazon.com | Convenience |
 | **AliExpress** | Magnetic charging connectors, small LiPo batteries | aliexpress.com | Slow shipping, budget options |
 | **PowerStream** | Custom small LiPo batteries | powerstream.com | US-based, low MOQ |
 | **K&J Magnetics** | Neodymium disc magnets | kjmagnetics.com | US-based, single-unit ordering |
