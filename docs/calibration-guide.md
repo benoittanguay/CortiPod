@@ -499,8 +499,9 @@ If readings seem off but you don't want to redo the full process:
 **Possible causes:**
 - Non-specific adsorption — cortisol sticking to the polymer surface rather than binding in specific cavities
   - **Fix:** More aggressive washing, or add a brief PBS rinse step between incubation and measurement
-- Too many CV cycles during polymerization — film is too thick, cavities are buried
-  - **Fix:** Reduce from 10 cycles to 5-7. Thinner film = better cavity accessibility
+- Too many CV cycles during polymerization — film is too thick, deepest cavities are buried
+  - **Fix:** Reduce from 10 cycles to 5-7. Thinner film = better cavity accessibility for bench use.
+  - **Note:** A thicker film is not always bad. For on-body use, more cycles (or overoxidation) create a denser matrix that blocks protein fouling while surface cavities remain accessible. If MIP ≈ NIP on bench with standard 10 cycles, reduce cycles. If bench works fine but on-body signal degrades fast, try extended overoxidation instead (see build plan Task 1.2, Step 2b).
 
 ### "Signal drifts during the 60-second chronoamperometry"
 

@@ -112,6 +112,55 @@ Create polypyrrole-based molecularly imprinted polymer sensors for cortisol on c
   - You should see increasing current with each cycle as polypyrrole deposits
   - The film should appear as a thin dark coating on the working electrode
 
+- [ ] **Step 2b (optional): Overoxidation — improves selectivity and on-body fouling resistance**
+
+  > **Why:** Overoxidation introduces carbonyl and carboxyl groups into the polypyrrole backbone, creating a negatively charged, denser film surface. This (1) repels negatively charged proteins via Donnan exclusion, extending on-body sensor life, and (2) cross-links the polymer, making cavities more rigid and selective. The trade-off is a ~10-35% reduction in absolute peak current (the film becomes more resistive), but selectivity (imprinting factor) improves by 30-50% and fouling resistance improves significantly.
+  >
+  > **Choose a level based on your use case:**
+  > - Skip this step entirely if doing bench-only testing and maximizing raw signal.
+  > - Use **Basic** for general-purpose sensors (good balance).
+  > - Use **Extended** if targeting on-body wear beyond 2-3 hours.
+
+  **Do this immediately after Step 2, while the electrode is still wet with MIP solution. Do NOT rinse first.**
+
+  - **Basic overoxidation** (recommended starting point):
+    ```
+    Method: Cyclic voltammetry
+    Start potential:  -200 mV
+    End potential:    +1100 mV
+    Scan rate:         50 mV/s
+    Number of cycles:  1
+    
+    Effect: ~10-15% peak current reduction, ~30-50% selectivity gain
+    Time added: ~26 seconds
+    ```
+
+  - **Extended overoxidation** (for on-body longevity):
+    ```
+    Method: Cyclic voltammetry
+    Start potential:  -200 mV
+    End potential:    +1100 mV
+    Scan rate:         50 mV/s
+    Number of cycles:  3-5
+    
+    Effect: ~25-35% peak current reduction, ~2x imprinting factor,
+            fouling resistance roughly doubles vs no overoxidation
+    Time added: ~2 minutes
+    ```
+
+  - **Aggressive overoxidation** (maximum fouling resistance):
+    ```
+    Method: Constant potential (chronoamperometry mode)
+    Potential:  +1200 mV
+    Duration:   120 seconds
+    
+    Effect: ~35-50% peak current reduction, strongest anti-fouling
+            surface charge. Best for multi-hour on-body sessions.
+    Time added: 2 minutes
+    ```
+
+  > **Important:** If using overoxidation, apply the same level to both MIP and NIP electrodes so the differential subtraction remains valid.
+
 - [ ] **Step 3: Rinse off excess solution**
   - Gently rinse with PBS pH 7.4
   - Do NOT use organic solvents yet (cortisol template still trapped)
@@ -150,6 +199,7 @@ Create polypyrrole-based molecularly imprinted polymer sensors for cortisol on c
   - NO cortisol added
   ```
   - Same CV parameters (10 cycles, -0.2 to +0.8 V, 50 mV/s)
+  - If you used overoxidation (Step 2b) on the MIP, apply the **same level** here
 
 - [ ] **Step 2: Perform the same wash step as Task 1.3**
   - Even though there's no template to remove, this ensures the NIP and MIP went through identical processing
