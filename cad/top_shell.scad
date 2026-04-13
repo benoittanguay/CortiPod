@@ -1,18 +1,22 @@
 // =============================================================================
 // top_shell.scad — CortiPod main enclosure ("brain unit")
 //
-// Houses PCB, battery, and pogo pins. FULLY SEALED — no lever cutouts.
+// Houses PCB, battery, and pogo pins. FULLY SEALED — only openings are
+// pogo pin pass-throughs in the mating face.
 //
 // Pogo pins are mounted on the underside of the main PCB, pointing DOWN
 // through the parting line to contact the electrode board's back pads.
 // This eliminates the need for flex cables or contacts in the bottom shell.
 //
-// Engineering features:
-//   - O-ring groove (1.5mm wide x 0.75mm deep for 1.0mm CS O-ring)
-//   - Alignment pins (asymmetric poka-yoke)
-//   - Snap-fit beams: 5mm length (>= 5x 0.8mm thickness), tapered 50% at tip
-//   - Pogo pin pass-through holes in the mating face
-//   - LED light pipe hole
+// Slide-on enclosure design:
+//   - U-channel rails on the underside (±Y sides) capture the bottom shell lips
+//   - Detent bumps on the channel floor click when the tray is fully seated
+//   - Hard stop wall at -Y end of each rail channel
+//   - Strap lugs at ±X ends (18mm quick-release)
+//   - No snap-fit clips, O-ring groove, alignment pins, LED hole, or magnets
+//
+// Assembly: slide bottom shell (electrode tray) in from the +Y end.
+// Pogo pins on main PCB engage electrode back contacts automatically.
 //
 // Print: TOP face down (smooth outer surface on build plate)
 // =============================================================================
@@ -25,32 +29,26 @@ module top_shell() {
     difference() {
         union() {
             shell_body();
-            snap_fit_clips();
-            alignment_pins();
+            strap_lugs();
+            u_channel_rails();
         }
 
         // Hollow out the cavity
         translate([0, 0, wall_thickness])
             internal_cavity();
 
-        // O-ring groove on the bottom mating face
-        oring_groove();
-
         // Pogo pin pass-through holes (4 holes through the mating face)
         pogo_pin_holes();
-
-        // LED light pipe hole
-        led_hole();
-
-        // Magnetic charging pad recesses
-        charging_pad_recesses();
     }
 
-    // PCB standoffs inside the cavity
+    // PCB standoffs inside the cavity (clipped to shell body)
     intersection() {
         shell_body();
         pcb_standoffs();
     }
+
+    // Detent bumps on channel floor (clipped to shell body + rails solid)
+    detent_bumps();
 }
 
 // ---- Shell body ----
@@ -114,6 +112,7 @@ module pcb_standoffs() {
 // into the bottom shell cavity, reaching the electrode back contacts.
 // Pin tops protrude above the mating face wall into the PCB cavity,
 // where they solder or press-fit to the main PCB pads.
+// pogo_protrusion_below = 1.0mm (pogo_total_height - wall_thickness)
 module pogo_pin_holes() {
     contacts = [
         [contact_we_mip_x, contact_we_mip_y],
@@ -130,89 +129,98 @@ module pogo_pin_holes() {
     }
 }
 
-// ---- LED light pipe hole ----
-module led_hole() {
-    translate([pod_length/2 - 5, 0, top_shell_height - wall_thickness - 0.1])
-        cylinder(d=led_hole_diameter, h=wall_thickness + 0.2);
-}
+// ---- Strap lugs ----
+// Protrusions at ±X ends with holes for an 18mm quick-release strap.
+// MOVED from bottom_shell to top_shell — the brain unit is worn on the strap.
+module strap_lugs() {
+    for (end = [-1, 1]) {
+        x_base = end * pod_length/2;
+        x_outer = x_base + end * lug_extension;
 
-// ---- Charging pad recesses ----
-module charging_pad_recesses() {
-    for (x_off = [-mag_pad_spacing/2, mag_pad_spacing/2]) {
-        translate([x_off, pod_width/2 - wall_thickness - 0.1, top_shell_height - mag_pad_depth])
-            cylinder(d=mag_pad_diameter, h=mag_pad_depth + 0.1);
-    }
-}
+        // Lug body
+        translate([min(x_base, x_outer), -strap_width/2, 0])
+            cube([lug_extension, strap_width, lug_height]);
 
-// ---- Alignment pins ----
-module alignment_pins() {
-    translate([align_pin1_x, align_pin1_y, -alignment_pin_height])
-        cylinder(d=alignment_pin_diameter, h=alignment_pin_height);
-
-    translate([align_pin2_x, align_pin2_y, -alignment_pin_height])
-        cylinder(d=alignment_pin_diameter, h=alignment_pin_height);
-}
-
-// ---- Snap-fit clips ----
-module snap_fit_clips() {
-    arm_length = clip_beam_length;
-    root_t = clip_beam_thickness;
-    tip_t  = clip_beam_thickness * 0.5;
-
-    clip_x_positions = [
-        -pod_length/2 + pod_corner_radius + 3,
-         pod_length/2 - pod_corner_radius - 3 - clip_width,
-    ];
-
-    for (cx = clip_x_positions) {
+        // Strap pin holes through each side of the lug
+        lug_center_x = x_base + end * lug_extension / 2;
         for (side = [-1, 1]) {
-            y_base = (side == -1)
-                ? -pod_width/2 + wall_thickness
-                :  pod_width/2 - wall_thickness - root_t;
-
-            // Tapered beam
-            translate([cx, y_base, -arm_length])
-                hull() {
-                    translate([0, 0, arm_length])
-                        cube([clip_width, root_t, 0.1]);
-                    translate([0, (root_t - tip_t) / 2, 0])
-                        cube([clip_width, tip_t, 0.1]);
-                }
-
-            // Hook at tip
-            hook_y = (side == -1)
-                ? y_base - clip_depth
-                : y_base + root_t;
-            translate([cx, hook_y, -arm_length])
-                cube([clip_width, clip_depth, clip_depth]);
+            translate([lug_center_x,
+                       side * strap_width/2,
+                       lug_height/2])
+                rotate([0, 90, 0])
+                    cylinder(d=lug_hole_diameter,
+                             h=lug_extension + 0.2,
+                             center=true);
         }
     }
 }
 
-// ---- O-ring groove ----
-module oring_groove() {
-    groove_inset = wall_thickness / 2;
+// ---- U-channel rails ----
+// Two U-channel profiles on the underside along ±Y inner walls.
+// The bottom shell (electrode tray) has lips on its ±Y edges that slide
+// into these channels from the +Y end.
+// Channel overhang prevents Z-axis separation.
+// Hard stop wall at -Y end prevents over-insertion.
+module u_channel_rails() {
+    // Rail runs the full inner length along X, positioned at ±Y inner wall
+    rail_x_start = -pod_length/2 + wall_thickness;
+    rail_x_length = pod_length - wall_thickness * 2;
 
-    difference() {
-        translate([0, 0, -0.01])
-            linear_extrude(oring_groove_depth + 0.01)
-                offset(r=-groove_inset)
-                    rounded_rect_2d(pod_length, pod_width, pod_corner_radius);
+    for (side = [-1, 1]) {
+        // Y position of the inner wall face
+        y_inner_wall = side * (pod_width/2 - wall_thickness);
 
-        translate([0, 0, -0.1])
-            linear_extrude(oring_groove_depth + 0.2)
-                offset(r=-groove_inset - oring_groove_width)
-                    rounded_rect_2d(pod_length, pod_width, pod_corner_radius);
+        // Outer rail wall (flush with inner shell wall, extending downward)
+        // Forms the outer vertical face of the U-channel
+        translate([rail_x_start,
+                   y_inner_wall - (side > 0 ? rail_channel_width + rail_wall_thickness : 0),
+                   -bottom_shell_height])
+            cube([rail_x_length,
+                  rail_wall_thickness + rail_channel_width,
+                  bottom_shell_height]);
+
+        // Channel overhang lip (horizontal ceiling of the U)
+        // Sits at Z = 0 (mating face), extends inward by rail_channel_depth
+        translate([rail_x_start,
+                   y_inner_wall - (side > 0 ? rail_channel_depth : -rail_channel_depth - rail_wall_thickness),
+                   -rail_channel_width])
+            cube([rail_x_length,
+                  rail_channel_depth + rail_wall_thickness,
+                  rail_channel_width]);
+
+        // Hard stop wall at -Y end (prevents over-insertion)
+        // Closes the channel at the -Y side
+        stop_y_pos = (side == 1)
+            ? y_inner_wall - rail_channel_width - rail_wall_thickness
+            : y_inner_wall;
+        translate([rail_x_start,
+                   stop_y_pos,
+                   -bottom_shell_height])
+            cube([rail_wall_thickness,
+                  rail_channel_width + rail_wall_thickness,
+                  bottom_shell_height]);
     }
 }
 
-// ---- Helper ----
-module rounded_rect_2d(length, width, radius) {
-    hull() {
-        for (x = [-length/2 + radius, length/2 - radius])
-            for (y = [-width/2 + radius, width/2 - radius])
-                translate([x, y])
-                    circle(r=radius);
+// ---- Detent bumps ----
+// Small raised dimples on the floor of each U-channel.
+// The bottom shell tray rides over these bumps and clicks into place
+// when fully seated (detent_position = 3mm from -Y hard stop).
+module detent_bumps() {
+    rail_x_start = -pod_length/2 + wall_thickness;
+
+    // Detent is placed detent_position mm from the -Y hard stop (closed end)
+    bump_x = rail_x_start + detent_position;
+
+    for (side = [-1, 1]) {
+        y_inner_wall = side * (pod_width/2 - wall_thickness);
+
+        // Channel floor Y centerline (midpoint of the channel slot)
+        bump_y = y_inner_wall + side * (-(rail_channel_width/2));
+
+        // Bump sits on the channel floor at Z = -bottom_shell_height
+        translate([bump_x, bump_y, -bottom_shell_height])
+            cylinder(d=detent_bump_diameter, h=detent_bump_height);
     }
 }
 
