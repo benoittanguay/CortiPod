@@ -1,80 +1,87 @@
 # CortiPod CAD Files
 
-## Design: 2-Piece Shell with Side-Loading Electrode Slot
+## Design: 2-Piece Shell with Single-Slot Dual Electrode
 
 ```
 Exploded view (side):
 
         ┌──────────────────────┐
         │      Top Shell        │  ← PCB + battery (FULLY SEALED)
-        │  [align pins]        │     no cutouts, no openings
-        └────────┬─────────────┘
-          O-ring │ seal    flex cable pass-through (sealed)
+        │  [pogo pins ↓↓↓↓]   │     4 pogo pins press DOWN through
+        └────────┬─────────────┘     pass-through holes in mating face
+          O-ring │ seal
         ┌────────┴─────────────┐
-        │    Bottom Shell       │  ← electrode channels + spring contacts
-        │  ┌────────────┬──┐ ◄────── chamfered insertion funnel at +X
-        │  │ sensing area│●●│  │     (●● = spring contacts under pad zone)
-        │  └────────────┴──┘  │
+        │    Bottom Shell       │  ← single electrode slot + skin window
+        │  ┌──────────────────┐│
+        │  │ MIP WE   NIP WE ││←── 22x22mm dual electrode PCB
+        │  │ (8mm)    (8mm)  ││     sensing face DOWN through skin window
+        │  │    CE frame     ││     back contacts face UP toward pogo pins
+        │  └──────────────────┘│
         ├──────┐         ┌────┤
         │ lug  │         │lug │
         └──────┘         └────┘
         ═══╤══════════════╤═══  skin
-          vent          vent        ← ventilation grooves
+          vent    ◉◉     vent   ← GSR pads + ventilation grooves
+                GSR pads
 ```
+
+## Key Design Changes (v2 — Dual Electrode)
+
+| Feature | v1 (DRP-220AT) | v2 (Custom Dual PCB) |
+|---------|:-:|:-:|
+| Electrode type | 2 separate commercial SPEs | 1 custom dual PCB (MIP + NIP) |
+| WE diameter | 4mm (12.6 mm²) | **8mm (50.3 mm² each, 100.6 mm² total)** |
+| Electrode size | 33.8 x 10.2 mm per strip | **22 x 22 mm single board** |
+| Slots | 2 channels + center divider | **1 slot** |
+| Pogo pins | 6 (3 per electrode, in bottom shell floor) | **4 (on main PCB, press down)** |
+| Contact method | Spring contacts push UP from floor | **Pogo pins push DOWN from PCB** |
+| Flex cable | Required (bottom shell to PCB) | **None (pogo pins are on the PCB)** |
+| Pod dimensions | 44 x 26 x 10 mm | **28 x 28 x 9 mm** |
+| Orientation key | None | **Corner chamfer (prevents MIP/NIP swap)** |
 
 ## Electrical Contact Design
 
-The DRP-220AT electrode has sensing pads and contact pads on the **same face**.
-Since the sensing face must point DOWN toward skin, the contact pads also face down.
+Pogo pins are mounted on the underside of the main PCB, pointing DOWN. They protrude through 4 pass-through holes in the top shell's mating face. When the shells snap together, the pins compress against the electrode board's back contact pads.
 
-**Solution:** Upward-facing spring contacts (pogo pins) are mounted in the solid
-floor of the bottom shell, in the zone under the electrode's connector tail (where
-there is no skin window). When the electrode slides in, the springs compress and
-press up against the downward-facing pads. Signals route to the PCB via a flex
-cable through a sealed pass-through at the shell parting line.
+```
+Cross-section (assembled):
 
-- **No ZIF, no lever, no cutouts** — the top shell is fully sealed
-- **One-step insertion** — just push the electrode in until it stops
-- **~6N total insertion force** (3 pins x 100gf x 2 electrodes)
-- **Recommended contacts:** Mill-Max 0906 (0.98mm dia, 100gf, gold-plated)
+     ┌─────── Top Shell ────────────┐
+     │  [Battery]                    │
+     │  [Main PCB ↓↓↓↓ pogo pins]  │
+     ├──────────┼┼┼┼────────────────┤  ← parting line (O-ring seal)
+     │    ledge ├──────────┤ ledge   │  ← electrode board on ledges
+     │          │back pads↑│         │     pogo pins contact back pads
+     │          │front▼▼▼▼▼│         │     sensing face hangs below ledges
+     │          └──────────┘         │
+     │     ════ skin window ════     │
+     └───────────────────────────────┘
+                   skin
+```
 
-## Engineering Design Principles Applied
-
-This design is informed by research documented in:
-- `docs/enclosure-design-engineering-reference.md` — ergonomics, cartridge mechanisms, sealing, skin contact, DFM, electrical interface
-- `docs/mechanical-engineering-guidelines.md` — parametric CAD, tolerances, DFA, prototyping, snap-fits, thermal/moisture
-
-Key features:
-- **Spring contacts in channel floor** — upward-facing pogo pins engage electrode pads
-- **Fully sealed top shell** — no lever cutouts, targeting IP67
-- **Convex bottom surface** (40mm radius) matching dorsal wrist curvature
-- **Chamfered insertion funnels** at +X entry for guided electrode loading
-- **Asymmetric alignment pins** between shells (poka-yoke prevents 180-degree error)
-- **Corrected O-ring groove** (1.5mm wide x 0.75mm deep for 1.0mm CS O-ring, 25% compression)
-- **Tapered snap-fit beams** (5mm length >= 5x thickness, 50% taper at tip)
-- **Ventilation grooves** on skin face to prevent moisture trapping
-- **FDM-friendly channel clearance** (0.3mm per side; reduce for SLA/production)
-- **Flex cable pass-through** sealed at parting line for spring contact wiring
+No flex cables, no bottom-shell wiring. The electrical path is:
+electrode back pad → pogo pin → main PCB trace → AD5941.
 
 ## Files
 
 | File | Description | Print this? |
-|------|-------------|-------------|
+|------|-------------|:-----------:|
 | `parameters.scad` | All dimensions — change values here, all parts update | No |
-| `top_shell.scad` | Top half (PCB + battery cavity, fully sealed, alignment pins) | Yes |
-| `bottom_shell.scad` | Bottom half (electrode channels, spring contacts, skin windows, vent grooves) | Yes |
+| `top_shell.scad` | Top half (PCB + battery + pogo pass-through holes) | Yes |
+| `bottom_shell.scad` | Bottom half (electrode slot, skin window, GSR pads) | Yes |
 | `assembly.scad` | Full assembly view — 4 view modes | No (viewing only) |
 
-## How to swap an electrode
+## How to swap the electrode
 
 ```
 1. Pull out old electrode  →  slide out from the +X end
-2. Slide in new electrode  →  connector tail first, sensing face down
+2. Slide in new electrode  →  tab end first, sensing face down
                                chamfered funnel guides it in
-                               spring contacts engage automatically
+                               corner chamfer ensures correct orientation
+                               pogo pins engage back contacts when shells close
 ```
 
-No tools needed. No levers. No disassembly. One step.
+No tools. No disassembly of the pod. One step.
 
 ## How to use
 
@@ -97,13 +104,18 @@ Open `assembly.scad` and change `view_mode`:
 ## Key dimensions
 
 ```
-Pod:              44 x 26 x 10 mm (< 12mm threshold to avoid cuff snagging)
-Top shell:        7.5 mm thick (fully sealed)
-Bottom shell:     2.5 mm thick (convex skin face, 40mm wrist radius)
-Electrode:        33.8 x 10.2 x 0.5 mm (DRP-220AT)
+Pod:              28 x 28 x 9 mm (compact, smaller than Whoop in all dimensions)
+Top shell:        6.5 mm thick (PCB + battery + pogo clearance)
+Bottom shell:     2.5 mm thick (single slot, convex skin face)
+Electrode board:  22 x 22 mm, 0.8 mm thick (custom dual PCB, FR4)
+  WE_MIP:         8 mm diameter (50.3 mm²)
+  WE_NIP:         8 mm diameter (50.3 mm²)
+  CE frame:       ~170 mm² (horseshoe around both WEs)
+  RE:             2 mm diameter (Ag/AgCl)
 Strap:            18mm standard quick-release
 O-ring:           1.0mm CS silicone, 50A durometer
-Spring contacts:  6x pogo pins (Mill-Max 0906, 0.98mm, 100gf, gold)
+Pogo pins:        4x (Mill-Max 0906, on main PCB)
+Back contacts:    4x 1.8mm pads (WE_MIP, WE_NIP, CE, RE)
 ```
 
 ## Printing
@@ -119,53 +131,31 @@ Spring contacts:  6x pogo pins (Mill-Max 0906, 0.98mm, 100gf, gold)
 
 | Material | Method | Where | Notes |
 |----------|--------|-------|-------|
-| MJF Nylon PA12 | Multi Jet Fusion | JLCPCB, Shapeways | Best overall; vapor-smooth seal surfaces |
-| SLA BioMed Amber | SLA | Xometry | Skin-safe certified, smooth enough for O-ring |
-| PETG | FDM | Home printer | Good for prototyping; use 0.3mm channel clearance |
+| MJF Nylon PA12 | Multi Jet Fusion | JLCPCB, Shapeways | Best overall |
+| SLA BioMed Amber | SLA | Xometry | Skin-safe certified |
+| PETG | FDM | Home printer | Good for prototyping |
 | PLA | FDM | Home printer | Test fit only |
-
-### Settings
-
-| Setting | FDM | SLA | MJF |
-|---------|-----|-----|-----|
-| Layer height | 0.15mm | 0.05mm | 0.08mm |
-| Infill | 100% | solid | solid |
-| Supports | Lugs only | Minimal | None |
 
 ### Ordering online (no printer needed)
 
 1. Export each part as STL (F6 > File > Export > STL)
 2. Upload to [JLCPCB 3D Printing](https://jlcpcb.com/3d-printing) or [Shapeways](https://www.shapeways.com)
 3. Select MJF Nylon PA12
-4. ~$5-15 per set, 5-10 day delivery
-
-### Tolerances by process
-
-| Process | Dimensional | Min wall | Channel clearance |
-|---------|------------|----------|-------------------|
-| FDM | +/-0.3-0.5mm | 1.2mm | 0.3mm/side (current default) |
-| SLA | +/-0.1-0.15mm | 0.5mm | 0.15mm/side |
-| MJF | +/-0.2-0.3mm | 1.0mm | 0.2mm/side |
-| Injection mold | +/-0.05-0.15mm | 0.8mm | 0.1mm/side |
+4. ~$3-10 per set (smaller pod = cheaper), 5-10 day delivery
 
 ## Assembly order
 
-1. Press-fit 6 pogo pins into the bottom shell floor holes (3 per electrode channel, in the contact zone)
-2. Route flex cable from pogo pins through the parting-line pass-through
-3. Place PCB on standoffs inside top shell (asymmetric standoffs enforce orientation)
-4. Solder flex cable to PCB pads
-5. Connect battery, tuck beside PCB
-6. Place 1.0mm CS silicone O-ring in groove on top shell mating face
-7. Align shells using alignment pins, snap together
-8. Slide each electrode in from the +X end (chamfered funnel guides entry, sensing face down)
-9. Attach 18mm strap through lugs
+1. Mount 4 pogo pins on the main PCB underside (matching electrode back contact positions)
+2. Place PCB on standoffs inside top shell (asymmetric standoffs enforce orientation)
+3. Connect battery, tuck beside PCB
+4. Place 1.0mm CS silicone O-ring in groove on top shell mating face
+5. Align shells using alignment pins, snap together
+6. Slide dual electrode board in from the +X end (sensing face down, corner chamfer aligns orientation)
+7. Attach 18mm strap through lugs
 
-## Future improvements (for Fusion 360 / production)
+## Related documents
 
-- True fillet radii (>= 1.5mm) on all skin-facing edges (OpenSCAD limitation)
-- Slot gasket (silicone lip at insertion opening, compressed by electrode)
-- Electrode keying notch (asymmetric corner to prevent reversed insertion)
-- Electrode presence detection (sense contact on a dedicated pad)
-- Draft angles (1-1.5 deg) on all internal surfaces for injection molding
-- TPU/silicone overmold on skin-contact surface for comfort
-- Integrated flex circuit replacing discrete flex cable
+- `docs/custom-electrode-fabrication-guide.md` — PCB electrode ordering and MIP fabrication
+- `electrode-pcb/cortipod-electrode.kicad_pcb` — KiCad source for the dual electrode PCB
+- `docs/enclosure-design-engineering-reference.md` — engineering principles
+- `docs/mechanical-engineering-guidelines.md` — DFM, tolerances, prototyping

@@ -3,34 +3,21 @@
 //
 // All measurements in millimeters.
 //
-// DESIGN: 2-piece shell with side-loading electrode slot
+// DESIGN: 2-piece shell with bottom-loading single electrode slot
 //
 //   TOP SHELL (the "brain"):
 //     Houses PCB, battery. Fully sealed — no lever cutouts.
-//     Alignment pins on mating face for shell-to-shell registration.
+//     Pogo pins mounted on the underside of the main PCB, pressing DOWN
+//     onto the back contacts of the electrode board.
 //
 //   BOTTOM SHELL (the "frame"):
-//     Two electrode channels with WALL-MOUNTED LEDGES (not a thin floor).
-//     Electrodes slide in from +X on their ceramic edges — the sensing
-//     face never touches anything. Skin windows are cut through the
-//     full floor thickness below the ledges.
+//     Single electrode slot for the 22x22mm dual electrode PCB.
+//     The electrode slides in from one end.
+//     Skin window exposes the sensing face (front) to sweat.
+//     The electrode board's back contacts face UP toward the pogo pins.
 //
-//     In the CONNECTOR TAIL zone (+X end):
-//       - Same ledges support the electrode from below
-//       - A retaining ceiling constrains the electrode from above
-//       - Spring contacts (pogo pins) protrude up through the floor
-//         between the ledges to press against the downward-facing pads
-//       - The electrode is sandwiched: ledges + ceiling hold it flat,
-//         spring contacts make electrical connection
-//
-//     In the SENSING zone (-X end):
-//       - Ledges support the electrode edges
-//       - Sensing face hangs free between ledges, exposed to skin window
-//       - No floor under the sensing face — full opening to skin
-//       - Channel is open-topped (top shell cavity above)
-//
-//   Assembly: snap shells together, slide electrodes in from +X end.
-//   Spring contacts engage automatically. No lever, no tools.
+//   Assembly: snap shells together, slide electrode in from +X end.
+//   Pogo pins on main PCB engage back contacts automatically.
 //
 // DATUMS:
 //   Datum A: parting line (Z = bottom_shell_height, where shells meet)
@@ -40,116 +27,103 @@
 // ENGINEERING REFERENCES:
 //   See docs/enclosure-design-engineering-reference.md
 //   See docs/mechanical-engineering-guidelines.md
+//   See docs/custom-electrode-fabrication-guide.md
 // =============================================================================
 
-// ---- DRP-220AT Electrode ----
-electrode_length     = 33.8;   // mm (total strip length)
-electrode_width      = 10.2;   // mm
-electrode_thickness  = 0.5;    // mm (ceramic substrate)
-electrode_pad_length = 5.0;    // mm — length of connector tail (pad region)
-electrode_active_length = electrode_length - electrode_pad_length; // ~28.8mm sensing region
-electrode_count      = 2;      // MIP (cortisol-detecting) + NIP (control/reference)
-electrode_gap        = 1.0;    // mm gap between the two electrode channels
+// ---- Custom Dual PCB Electrode (MIP + NIP on one board) ----
+// Front (skin side): two 8mm WE circles, CE frame, RE pad
+// Back (pod side): 4 contact pads for pogo pins (WE_MIP, WE_NIP, CE, RE)
+// Test tab: 4mm extension with bench test points, snaps off for final pod
+electrode_board_width    = 22.0;   // mm (X dimension, insertion direction)
+electrode_board_height   = 18.0;   // mm (Y dimension, sensing zone only, no tab)
+electrode_board_tab      = 4.0;    // mm (test point tab, extends beyond sensing zone)
+electrode_board_total_y  = electrode_board_height + electrode_board_tab; // 22mm with tab
+electrode_board_thickness = 0.8;   // mm (PCB, FR4)
+electrode_count          = 1;      // single board carries both MIP + NIP
 
-// ---- Electrode contact pads (on the connector tail) ----
-electrode_pad_count  = 3;      // WE, CE, REF per electrode
-electrode_pad_width  = 2.0;    // mm — individual pad width
-electrode_pad_pitch  = 3.0;    // mm — center-to-center spacing
+// ---- Working electrode geometry (on the front/sensing face) ----
+we_diameter              = 8.0;    // mm (each WE circle)
+we_mip_offset_x          = -5.0;   // mm from board center
+we_nip_offset_x           =  5.0;   // mm from board center
+we_area_each             = 50.3;   // mm² (pi * 4²)
+we_area_total            = 100.6;  // mm² (both WEs combined)
+
+// ---- Back contact pad positions (relative to board center) ----
+// These define where pogo pins on the main PCB must land
+contact_we_mip_x = -4.0;   contact_we_mip_y = -2.0;
+contact_we_nip_x =  4.0;   contact_we_nip_y = -2.0;
+contact_ce_x     = -4.0;   contact_ce_y     =  4.0;
+contact_re_x     =  4.0;   contact_re_y     =  4.0;
+contact_pad_diameter = 1.8;  // mm
+
+// ---- Corner chamfer (orientation key) ----
+// Bottom-left corner of the tab end is chamfered so the electrode
+// can only be inserted one way (prevents MIP/NIP swap)
+chamfer_size = 1.5;  // mm (45-degree chamfer at one corner)
 
 // ---- Pod overall dimensions ----
-pod_length           = 44.0;   // mm
-pod_width            = 26.0;   // mm
-pod_height           = 10.0;   // mm (total, target < 12mm to avoid cuff snagging)
+// Compact design wrapping around the 22x22mm electrode board
+pod_length           = 28.0;   // mm (X, along insertion direction)
+pod_width            = 28.0;   // mm (Y, perpendicular to insertion)
+pod_height           = 9.0;    // mm (Z, total stacked height)
 pod_corner_radius    = 3.0;    // mm
 wall_thickness       = 1.5;    // mm
 
 // ---- Shell split ----
-top_shell_height     = 7.5;    // mm (PCB + battery)
-bottom_shell_height  = 2.5;    // mm (electrode channels + ledges + skin window)
+// Bottom shell: electrode slot + skin window
+// Top shell: PCB + battery + pogo pins press down onto electrode back
+top_shell_height     = 6.5;    // mm (PCB + battery + pogo clearance)
+bottom_shell_height  = 2.5;    // mm (electrode slot + skin window)
 
 // ---- Ergonomics ----
 wrist_curvature_radius = 40.0;  // mm — convex radius on bottom skin face
 skin_fillet_radius     = 1.5;   // mm — minimum fillet on all skin-facing edges
 
-// ---- Electrode support: wall-mounted ledges ----
-// Ledges protrude inward from channel walls. The electrode rests on its
-// ceramic edges on these ledges. The sensing face hangs free between them,
-// never touching any surface. This prevents scratching the MIP coating
-// during insertion and eliminates the fragile 0.3mm thin floor.
+// ---- Electrode slot ----
+// Single slot for the dual electrode board.
+// Board slides in from +X end, stops at -X inner wall.
+slot_clearance       = 0.2;    // mm per side (tighter than old 0.3mm, SLA/MJF target)
+slot_width           = electrode_board_width + slot_clearance * 2;   // ~22.4mm
+slot_depth           = electrode_board_total_y + slot_clearance;     // ~22.2mm (with tab)
+slot_height          = electrode_board_thickness + 0.2;              // ~1.0mm
+
+// ---- Electrode support ledges ----
+// Narrow shelves along the slot walls. The electrode board rests on its
+// PCB edges on these ledges. The sensing face (WE, CE, RE pads) hangs
+// free below the ledges, exposed through the skin window.
+ledge_height         = 0.5;    // mm — distance from skin surface to electrode front face
+ledge_width          = 1.0;    // mm — how far ledge protrudes inward from slot wall
+
+// ---- Skin window ----
+// Full-depth opening below the sensing zone. Exposes both WE pads,
+// the CE frame, and RE to sweat/skin contact.
+skin_window_width    = electrode_board_width - ledge_width * 2 - 0.2;  // ~19.8mm
+skin_window_length   = 16.0;   // mm (covers both 8mm WE circles + CE bars)
+
+// ---- Insertion opening ----
+// +X end of the pod is open for electrode insertion.
+// Chamfered funnel guides the board in.
+insertion_chamfer_depth  = 2.0;   // mm into the slot from the +X face
+insertion_chamfer_angle  = 25;    // degrees (gentler than old 30°)
+
+// ---- Spring contacts (pogo pins) ----
+// Mounted in bores through the top shell mating face. Tips protrude
+// DOWN into the bottom shell cavity to contact the electrode back pads.
+// Pin bodies sit in the mating face wall; pads on top connect to the
+// main PCB via short wires or solder bridges.
 //
-// Ledge top surface is at Z = ledge_height from the bottom of the shell.
-// The electrode sensing face (bottom) sits at Z = ledge_height.
-// Skin is at Z = 0. So ledge_height = desired skin-to-electrode gap.
-ledge_height         = 0.3;    // mm — distance from skin surface to electrode face
-ledge_width          = 0.8;    // mm — how far the ledge protrudes inward from wall
-ledge_clearance      = 0.1;    // mm — vertical gap above electrode to allow sliding
-
-// ---- Skin window (through the full floor) ----
-// With ledges supporting the electrode, the skin window can be nearly
-// the full electrode width — cut through the entire floor thickness.
-// The window is bounded by the ledges on each side.
-sensor_window_length = 26.0;   // mm (slightly shorter than electrode_active_length)
-sensor_window_width  = electrode_width - ledge_width * 2 + 0.2;  // ~8.8mm (between ledges)
-
-// ---- Channel dimensions ----
-// Channel width = electrode + clearance. Channel is open-topped in
-// the sensing zone, and has a retaining ceiling in the connector tail zone.
-channel_clearance    = 0.3;    // mm per side (FDM prototyping; reduce for production)
-channel_width        = electrode_width + channel_clearance * 2;  // ~10.8mm
-
-// ---- Connector tail zone (retaining slot) ----
-// In this zone, a ceiling constrains the electrode from lifting when
-// spring contacts push up. The electrode is sandwiched:
-//   bottom: ledges + spring contacts pushing up
-//   top:    retaining ceiling holding down
-// Ceiling height = ledge_height + electrode_thickness + ledge_clearance
-contact_zone_length  = electrode_pad_length + 1.0;  // 6mm (pad region + margin)
-contact_zone_x_start = -pod_length/2 + wall_thickness + electrode_active_length;
-retaining_ceiling_z  = ledge_height + electrode_thickness + ledge_clearance; // ~0.9mm
-
-// ---- Insertion funnel ----
-insertion_chamfer_depth  = 2.0;   // mm into the channel from +X face
-insertion_chamfer_angle  = 30;    // degrees
-
-// ---- Spring contacts (upward-facing, in connector tail zone floor) ----
-// Pogo pins mounted in the floor between the ledges. Tips protrude up
-// to contact the downward-facing electrode pads. The retaining ceiling
-// prevents the electrode from lifting.
-//
-// Pin compressed height must equal ledge_height so electrode stays flat:
-//   pin protrusion above floor = ledge_height (0.3mm) when compressed
-//   pin protrusion when uncompressed = ledge_height + spring_contact_travel
+// Z-stack: parting line at Z=2.5, electrode back at Z=1.1.
+// Pins need to bridge 1.4mm. With 2.0mm total travel, they compress
+// ~0.6mm when the electrode is installed — good contact force.
+spring_contact_count     = 4;
 spring_contact_diameter  = 1.0;   // mm (Mill-Max 0906 = 0.98mm)
-spring_contact_hole      = 1.3;   // mm (mounting hole with clearance)
+spring_contact_hole      = 1.3;   // mm (bore diameter in mating face)
 spring_contact_travel    = 0.5;   // mm (compression stroke)
-spring_contacts_per_elec = 3;     // WE, CE, REF
-
-// Contact X center (middle of the connector tail zone)
-contact_x_center = contact_zone_x_start + contact_zone_length / 2;
-
-// Flex cable pass-through: sealed hole at parting line
-flex_passthrough_width  = 4.0;   // mm
-flex_passthrough_height = 1.0;   // mm
-flex_passthrough_x      = contact_x_center;
-
-// ---- Insertion slot ----
-insertion_slot_height = electrode_thickness + 0.6;  // ~1.1mm
-insertion_slot_width  = channel_width;
-
-// ---- Ventilation grooves (on bottom shell skin face) ----
-vent_groove_width    = 0.8;    // mm
-vent_groove_depth    = 0.3;    // mm
-vent_groove_count    = 3;
-
-// ---- Alignment pins ----
-alignment_pin_diameter = 2.0;
-alignment_pin_height   = 2.0;
-alignment_hole_clearance = 0.1;
-
-align_pin1_x = -pod_length/2 + 6;
-align_pin1_y = -pod_width/2 + 4;
-align_pin2_x =  pod_length/2 - 8;
-align_pin2_y =  pod_width/2 - 4;
+pogo_total_height        = 3.0;   // mm (full pin length — protrudes 1.5mm below mating face)
+pogo_protrusion_below    = pogo_total_height - wall_thickness; // 1.5mm below mating face
+// Z-stack check: pin tip unloaded at Z = 2.5 - 1.5 = 1.0
+//                electrode back at Z = 0.5 + 0.8 = 1.3
+//                compression = 1.3 - 1.0 = 0.3mm (good contact, within 0.5mm travel)
 
 // ---- Strap lugs (18mm quick-release) ----
 strap_width          = 18.0;
@@ -159,9 +133,12 @@ lug_hole_diameter    = 1.5;
 lug_extension        = 3.0;
 
 // ---- GSR electrode pads ----
+// Two exposed metal pads on the bottom shell skin face
+// for galvanic skin response (sweat/contact detection).
+// Positioned flanking the skin window.
 gsr_pad_diameter     = 4.0;
-gsr_pad_spacing      = 14.0;
-gsr_pad_offset_y     = 3.0;
+gsr_pad_spacing      = 20.0;   // mm center-to-center
+gsr_pad_y_offset     = 0;      // mm from pod center (centered)
 
 // ---- Magnetic charging pads ----
 mag_pad_diameter     = 5.0;
@@ -169,15 +146,26 @@ mag_pad_depth        = 1.2;
 mag_pad_spacing      = 12.0;
 charge_pad_diameter  = 3.0;
 
-// ---- PCB ----
-pcb_length           = 32.0;
-pcb_width            = 18.0;
+// ---- Main PCB (inside top shell) ----
+pcb_length           = 24.0;   // mm (smaller — fits above electrode)
+pcb_width            = 24.0;   // mm
 pcb_thickness        = 0.8;
 
 // ---- Battery ----
-battery_length       = 20.0;
-battery_width        = 15.0;
-battery_thickness    = 3.0;
+battery_length       = 18.0;   // mm (compact cell, stacks above PCB)
+battery_width        = 12.0;   // mm
+battery_thickness    = 2.5;    // mm (thinner cell for reduced height)
+
+// ---- Alignment pins ----
+alignment_pin_diameter = 2.0;
+alignment_pin_height   = 2.0;
+alignment_hole_clearance = 0.1;
+
+// Asymmetric placement prevents 180° assembly error
+align_pin1_x = -pod_length/2 + 5;
+align_pin1_y = -pod_width/2 + 4;
+align_pin2_x =  pod_length/2 - 6;
+align_pin2_y =  pod_width/2 - 4;
 
 // ---- Snap-fit clips ----
 clip_width           = 3.0;
@@ -190,5 +178,19 @@ oring_groove_width   = 1.5;
 oring_groove_depth   = 0.75;
 oring_cs             = 1.0;
 
+// ---- Ventilation grooves (on bottom shell skin face) ----
+vent_groove_width    = 0.8;    // mm
+vent_groove_depth    = 0.3;    // mm
+vent_groove_count    = 3;
+
 // ---- Tolerances ----
 printer_tolerance    = 0.2;
+
+// ---- LED status indicator ----
+led_hole_diameter    = 2.0;    // mm (light pipe hole in top shell)
+
+// ---- Derived: electrode Z position ----
+// The electrode front face (sensing) sits at Z = ledge_height from bottom of pod.
+// The electrode back face (contacts) sits at Z = ledge_height + electrode_board_thickness.
+// Pogo pins from the main PCB must reach down to this height.
+electrode_back_z = ledge_height + electrode_board_thickness;  // 0.5 + 0.8 = 1.3mm from bottom

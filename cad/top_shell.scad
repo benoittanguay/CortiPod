@@ -1,22 +1,24 @@
 // =============================================================================
 // top_shell.scad — CortiPod main enclosure ("brain unit")
 //
-// Houses PCB and battery. FULLY SEALED — no lever cutouts or openings.
-// Spring contacts are in the bottom shell; flex cable routes signals
-// to the PCB through a sealed pass-through at the parting line.
+// Houses PCB, battery, and pogo pins. FULLY SEALED — no lever cutouts.
+//
+// Pogo pins are mounted on the underside of the main PCB, pointing DOWN
+// through the parting line to contact the electrode board's back pads.
+// This eliminates the need for flex cables or contacts in the bottom shell.
 //
 // Engineering features:
-//   - Corrected O-ring groove (1.5mm wide x 0.75mm deep for 1.0mm CS O-ring)
-//   - Alignment pins for shell-to-shell registration (asymmetric poka-yoke)
+//   - O-ring groove (1.5mm wide x 0.75mm deep for 1.0mm CS O-ring)
+//   - Alignment pins (asymmetric poka-yoke)
 //   - Snap-fit beams: 5mm length (>= 5x 0.8mm thickness), tapered 50% at tip
-//   - No ZIF lever cutout — eliminated for better IP67 sealing
+//   - Pogo pin pass-through holes in the mating face
+//   - LED light pipe hole
 //
 // Print: TOP face down (smooth outer surface on build plate)
 // =============================================================================
 
 include <parameters.scad>
 
-// Adaptive resolution: fast preview, smooth export
 $fn = $preview ? 32 : 96;
 
 module top_shell() {
@@ -33,9 +35,18 @@ module top_shell() {
 
         // O-ring groove on the bottom mating face
         oring_groove();
+
+        // Pogo pin pass-through holes (4 holes through the mating face)
+        pogo_pin_holes();
+
+        // LED light pipe hole
+        led_hole();
+
+        // Magnetic charging pad recesses
+        charging_pad_recesses();
     }
 
-    // PCB standoffs inside the cavity (asymmetric for poka-yoke)
+    // PCB standoffs inside the cavity
     intersection() {
         shell_body();
         pcb_standoffs();
@@ -70,10 +81,12 @@ module internal_cavity() {
 
 // ---- PCB standoffs ----
 // Asymmetric placement so PCB can only be installed one way (poka-yoke).
-// Three round standoffs + one slotted (accommodates thermal expansion).
 module pcb_standoffs() {
     standoff_height = 1.0;
     standoff_od = 3.0;
+
+    // PCB sits above the pogo pin zone, offset toward +Z
+    pcb_z = wall_thickness;
 
     round_positions = [
         [-pcb_length/2 + 3, -pcb_width/2 + 3],
@@ -82,22 +95,56 @@ module pcb_standoffs() {
     ];
 
     for (pos = round_positions) {
-        translate([pos[0], pos[1], wall_thickness])
+        translate([pos[0], pos[1], pcb_z])
             cylinder(d=standoff_od, h=standoff_height);
     }
 
-    // One slotted standoff (+X, +Y) — elongated along X for thermal expansion
-    translate([pcb_length/2 - 3, pcb_width/2 - 3, wall_thickness])
+    // One slotted standoff (+X, +Y) for thermal expansion
+    translate([pcb_length/2 - 3, pcb_width/2 - 3, pcb_z])
         hull() {
             cylinder(d=standoff_od, h=standoff_height);
-            translate([1.5, 0, 0])
+            translate([1.0, 0, 0])
                 cylinder(d=standoff_od, h=standoff_height);
         }
 }
 
+// ---- Pogo pin bores ----
+// Through-bores in the mating face wall for spring-loaded pogo pins.
+// Pins sit in these bores with tips protruding below the mating face
+// into the bottom shell cavity, reaching the electrode back contacts.
+// Pin tops protrude above the mating face wall into the PCB cavity,
+// where they solder or press-fit to the main PCB pads.
+module pogo_pin_holes() {
+    contacts = [
+        [contact_we_mip_x, contact_we_mip_y],
+        [contact_we_nip_x, contact_we_nip_y],
+        [contact_ce_x,     contact_ce_y],
+        [contact_re_x,     contact_re_y],
+    ];
+
+    for (pos = contacts) {
+        // Bore through the full mating face wall + clearance above and below
+        translate([pos[0], pos[1], -pogo_protrusion_below - 0.1])
+            cylinder(d=spring_contact_hole,
+                     h=wall_thickness + pogo_protrusion_below + 0.2);
+    }
+}
+
+// ---- LED light pipe hole ----
+module led_hole() {
+    translate([pod_length/2 - 5, 0, top_shell_height - wall_thickness - 0.1])
+        cylinder(d=led_hole_diameter, h=wall_thickness + 0.2);
+}
+
+// ---- Charging pad recesses ----
+module charging_pad_recesses() {
+    for (x_off = [-mag_pad_spacing/2, mag_pad_spacing/2]) {
+        translate([x_off, pod_width/2 - wall_thickness - 0.1, top_shell_height - mag_pad_depth])
+            cylinder(d=mag_pad_diameter, h=mag_pad_depth + 0.1);
+    }
+}
+
 // ---- Alignment pins ----
-// Protrude from the bottom mating face into holes in the bottom shell.
-// Asymmetric placement prevents 180-degree assembly error.
 module alignment_pins() {
     translate([align_pin1_x, align_pin1_y, -alignment_pin_height])
         cylinder(d=alignment_pin_diameter, h=alignment_pin_height);
@@ -107,16 +154,14 @@ module alignment_pins() {
 }
 
 // ---- Snap-fit clips ----
-// Cantilever beams extending below the shell body.
-// Tapered: 0.8mm at root, 0.4mm at tip for even stress distribution.
 module snap_fit_clips() {
     arm_length = clip_beam_length;
     root_t = clip_beam_thickness;
     tip_t  = clip_beam_thickness * 0.5;
 
     clip_x_positions = [
-        -pod_length/2 + pod_corner_radius + 4,
-         pod_length/2 - pod_corner_radius - 4 - clip_width,
+        -pod_length/2 + pod_corner_radius + 3,
+         pod_length/2 - pod_corner_radius - 3 - clip_width,
     ];
 
     for (cx = clip_x_positions) {
@@ -125,7 +170,7 @@ module snap_fit_clips() {
                 ? -pod_width/2 + wall_thickness
                 :  pod_width/2 - wall_thickness - root_t;
 
-            // Tapered beam (root at top, tip at bottom)
+            // Tapered beam
             translate([cx, y_base, -arm_length])
                 hull() {
                     translate([0, 0, arm_length])
@@ -145,7 +190,6 @@ module snap_fit_clips() {
 }
 
 // ---- O-ring groove ----
-// For 1.0mm CS silicone O-ring: 1.5mm wide, 0.75mm deep (25% compression).
 module oring_groove() {
     groove_inset = wall_thickness / 2;
 

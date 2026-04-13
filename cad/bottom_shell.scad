@@ -1,37 +1,27 @@
 // =============================================================================
 // bottom_shell.scad — CortiPod electrode frame (skin-contact side)
 //
-// WALL-MOUNTED LEDGE DESIGN: Electrodes slide on their ceramic edges along
-// ledges protruding from the channel walls. The sensing face never touches
-// any surface — it hangs free between the ledges, exposed to the skin window.
+// SOLID-BODY APPROACH: Start with a solid rounded rectangle, then cut out:
+//   1. Electrode slot pocket (from top) — the cavity the board sits in
+//   2. Skin window (from bottom) — exposes sensing face to skin
+//   3. Insertion opening (through +X wall) — how the board enters
+//   4. Small features (vent grooves, GSR holes, alignment, clips, key)
 //
-// Two zones per channel:
+// The material left between cuts naturally forms:
+//   - Perimeter walls (outer shell minus slot pocket)
+//   - Floor/ledges (slot pocket floor minus skin window)
+//   - End-stop wall (-X side of slot)
 //
-//   SENSING ZONE (-X end, ~29mm):
-//     Ledges support electrode edges. Open top. Full skin window below.
-//     Electrode face hangs free — no scratching, no thin floor.
+// Cross-section at the sensing zone (looking from +X):
 //
-//   CONNECTOR TAIL ZONE (+X end, ~6mm):
-//     Same ledges + retaining ceiling above = sandwiched slot.
-//     Spring contacts protrude up through floor between ledges.
-//     Electrode held flat: springs push up, ceiling holds down.
-//
-// Cross-section in SENSING ZONE (looking from +X):
-//
-//     ┌──wall──┐                           ┌──wall──┐
-//     │        ├─ledge   ┌electrode┐ ledge─┤        │
-//     │        │         │face▼▼▼▼▼│       │        │
-//     │        └─────────┘         └───────┘        │
-//     │            ══════ skin window ══════         │
-//     └─────────────────────────────────────────────┘
-//
-// Cross-section in CONNECTOR TAIL ZONE:
-//
-//     ┌──wall──────── ceiling ─────────wall──┐
-//     │        ├─ledge ┌electrode┐ ledge─┤   │
-//     │        │    ●●●│pads▼▼▼▼▼│●●●    │   │
-//     │        └───────┘ springs └───────┘   │
-//     └──────────────────────────────────────┘
+//     ┌─ wall ─┬── shelf ──┐              ┌── shelf ──┬─ wall ─┐
+//     │        │           │  electrode   │           │        │
+//     │  2.5mm │  1.3mm    │   0.8mm PCB  │   1.3mm   │  2.5mm │
+//     │        │           ├──────────────┤           │        │
+//     │        │     0.3mm floor          0.3mm floor │        │
+//     │        └───────────┘ ══ skin window ══ ───────┘        │
+//     └────────────────────────────────────────────────────────┘
+//                          skin
 //
 // Print: skin-side DOWN for smooth bottom surface.
 // =============================================================================
@@ -51,258 +41,128 @@ module rounded_rect(l, w, h, r) {
 }
 
 // ---- Derived positions ----
-// Y centers of each electrode channel
-mip_y_center = -(electrode_gap/2 + electrode_width/2);
-nip_y_center =  (electrode_gap/2 + electrode_width/2);
+// Slot runs from the -X stop wall to the +X insertion opening
+slot_x_start = -pod_length/2 + wall_thickness;
+slot_x_end   =  pod_length/2;
+slot_x_length = slot_x_end - slot_x_start;
 
-// Channel X extent
-channel_x_start = -pod_length/2 + wall_thickness;  // -X stop wall
-channel_x_end   =  pod_length/2;                    // +X open end
-
-// Sensing zone X extent
-sensing_x_start = channel_x_start;
-sensing_x_end   = contact_zone_x_start;
+// Skin window centered in the slot area
+skin_win_x_center = slot_x_start + slot_x_length / 2;
+skin_win_x_start  = skin_win_x_center - skin_window_width / 2;
 
 // ---- Main module ----
 module bottom_shell() {
     difference() {
+        // === POSITIVE GEOMETRY (one connected solid) ===
         union() {
-            // Perimeter walls (full height)
-            perimeter_walls();
+            // The entire shell body — solid block with rounded corners.
+            // Everything (walls, floor, ledges) is part of this one piece.
+            rounded_rect(pod_length, pod_width, bottom_shell_height, pod_corner_radius);
 
-            // Center divider between MIP and NIP channels
-            center_divider();
-
-            // Wall-mounted ledges (electrode support rails)
-            electrode_ledges();
-
-            // Retaining ceiling in the connector tail zone
-            retaining_ceilings();
-
-            // Solid floor in the connector tail zone (for spring contacts)
-            contact_zone_floor();
-
-            // Strap lugs
+            // Strap lugs extending from ±X ends
             strap_lugs();
         }
 
-        // Insertion openings with chamfered funnel at +X end
-        insertion_openings();
+        // === NEGATIVE GEOMETRY (all the cavities) ===
 
-        // Skin windows — full-depth openings between the ledges
-        sensor_windows();
+        // 1. ELECTRODE SLOT POCKET — cut from the top
+        //    Creates the cavity the electrode board sits in.
+        //    Leaves a floor of thickness ledge_height (0.3mm) at the bottom.
+        //    The material between the slot boundary and the outer walls
+        //    forms the shelves that support the electrode edges.
+        translate([slot_x_start, -slot_width/2, ledge_height])
+            cube([slot_x_length + 0.1,
+                  slot_width,
+                  bottom_shell_height]);
 
-        // Spring contact mounting holes through the contact zone floor
-        spring_contact_holes();
+        // 2. SKIN WINDOW — cut from the bottom, through the floor
+        //    Only in the sensing zone (smaller than the slot).
+        //    The remaining floor around the window IS the electrode ledge.
+        translate([skin_win_x_start, -skin_window_length/2, -0.1])
+            cube([skin_window_width,
+                  skin_window_length,
+                  bottom_shell_height + 0.2]);
 
-        // Flex cable pass-through at parting line
-        flex_cable_passthrough();
+        // 3. INSERTION OPENING — cut through the +X perimeter wall
+        //    Allows the electrode board to slide in from the +X end.
+        insertion_opening();
 
-        // Ventilation grooves on the outer skin-facing surface
+        // 4. VENTILATION GROOVES — shallow channels on the bottom skin face
         ventilation_grooves();
 
-        // Alignment pin holes
+        // 5. ALIGNMENT PIN HOLES — for shell-to-shell registration
         alignment_pin_holes();
 
-        // Snap clip receiver slots
+        // 6. SNAP CLIP RECEIVER SLOTS — for top shell clips
         clip_receiver_slots();
 
-        // GSR pad through-holes
+        // 7. GSR PAD HOLES — through-holes for skin conductance pads
         gsr_pad_holes();
+
+        // 8. ORIENTATION KEY — corner notch matching electrode chamfer
+        orientation_key();
     }
 }
 
-// ---- Perimeter walls ----
-// Full-height walls forming the outer boundary. No thin base plate —
-// the floor is only present in the connector tail zone.
-module perimeter_walls() {
-    inner_r = max(pod_corner_radius - wall_thickness, 0.5);
+// ---- Insertion opening ----
+// Cut through the +X perimeter wall to create the slot entry.
+// Includes a chamfered funnel to guide electrode insertion.
+module insertion_opening() {
+    // Rectangular cut through the +X wall, full slot width and height
+    translate([pod_length/2 - wall_thickness - 0.1,
+               -slot_width/2,
+               0])
+        cube([wall_thickness + 0.2,
+              slot_width,
+              ledge_height + electrode_board_thickness + slot_clearance + 0.1]);
 
-    difference() {
-        rounded_rect(pod_length, pod_width, bottom_shell_height, pod_corner_radius);
-
-        translate([0, 0, -0.1])
-            rounded_rect(pod_length - wall_thickness * 2,
-                         pod_width  - wall_thickness * 2,
-                         bottom_shell_height + 0.2,
-                         inner_r);
-    }
-}
-
-// ---- Center divider ----
-module center_divider() {
-    inner_length = pod_length - wall_thickness * 2;
-
-    translate([-inner_length/2, -electrode_gap/2, 0])
-        cube([inner_length, electrode_gap, bottom_shell_height]);
-}
-
-// ---- Electrode ledges ----
-// Narrow shelves protruding inward from the channel walls at ledge_height.
-// The electrode's ceramic edges rest on these. The sensing face hangs
-// between them without touching anything.
-//
-// Each channel has 4 ledges: 2 from the outer wall, 2 from the center divider.
-// Ledges run the full channel length (both sensing and contact zones).
-module electrode_ledges() {
-    ledge_x_start = channel_x_start;
-    ledge_x_length = channel_x_end - channel_x_start;
-
-    for (yc = [mip_y_center, nip_y_center]) {
-        // Outer wall ledge (away from center divider)
-        outer_wall_y = (yc < 0)
-            ? -pod_width/2 + wall_thickness         // MIP: inner face of -Y wall
-            :  pod_width/2 - wall_thickness - ledge_width;  // NIP: inner face of +Y wall
-
-        translate([ledge_x_start, outer_wall_y, 0])
-            cube([ledge_x_length, ledge_width, ledge_height]);
-
-        // Center divider ledge (toward center)
-        divider_y = (yc < 0)
-            ? -electrode_gap/2 - ledge_width  // MIP: inner face of divider (-Y side)
-            :  electrode_gap/2;                // NIP: inner face of divider (+Y side)
-
-        translate([ledge_x_start, divider_y, 0])
-            cube([ledge_x_length, ledge_width, ledge_height]);
-    }
-}
-
-// ---- Retaining ceilings ----
-// In the connector tail zone only: a ceiling that constrains the electrode
-// from lifting when spring contacts push up. Forms a sandwiched slot.
-// Ceiling spans from outer wall to center divider at retaining_ceiling_z.
-module retaining_ceilings() {
-    ceil_x_start = contact_zone_x_start;
-    ceil_x_length = contact_zone_length;
-
-    for (yc = [mip_y_center, nip_y_center]) {
-        ch_inner_y = (yc < 0)
-            ? -(electrode_gap/2 + channel_width)   // MIP channel -Y edge
-            :   electrode_gap/2;                    // NIP channel +Y edge
-
-        translate([ceil_x_start, ch_inner_y, retaining_ceiling_z])
-            cube([ceil_x_length, channel_width, bottom_shell_height - retaining_ceiling_z]);
-    }
-}
-
-// ---- Contact zone floor ----
-// Solid floor only in the connector tail zone (last ~6mm of each channel).
-// Spring contacts mount through this floor. The floor extends from Z=0
-// up to ledge_height so it's flush with the ledge surface.
-module contact_zone_floor() {
-    floor_x_start = contact_zone_x_start;
-    floor_x_length = contact_zone_length;
-
-    for (yc = [mip_y_center, nip_y_center]) {
-        ch_inner_y = (yc < 0)
-            ? -(electrode_gap/2 + channel_width)
-            :   electrode_gap/2;
-
-        translate([floor_x_start, ch_inner_y, 0])
-            cube([floor_x_length, channel_width, ledge_height]);
-    }
-}
-
-// ---- Insertion openings ----
-// Cut through the +X perimeter wall with chamfered funnel.
-// The slot height matches the retaining ceiling slot height in the
-// connector tail zone.
-module insertion_openings() {
-    for (yc = [mip_y_center, nip_y_center]) {
-        // Main slot through +X wall (from floor to ceiling height)
-        translate([pod_length/2 - wall_thickness - 0.1,
-                   yc - channel_width/2,
-                   0])
-            cube([wall_thickness + 0.2,
-                  channel_width,
-                  retaining_ceiling_z + 0.1]);
-
-        // Chamfered funnel at entry
-        chamfer_exp = insertion_chamfer_depth * tan(insertion_chamfer_angle);
-        translate([pod_length/2 - wall_thickness - insertion_chamfer_depth,
-                   yc - channel_width/2 - chamfer_exp,
-                   -0.1])
-            hull() {
-                translate([0, chamfer_exp, 0])
-                    cube([0.1, channel_width, retaining_ceiling_z + 0.1]);
-                translate([insertion_chamfer_depth + wall_thickness, 0, 0])
-                    cube([0.1, channel_width + chamfer_exp * 2, retaining_ceiling_z + 0.1]);
-            }
-    }
-}
-
-// ---- Sensor windows ----
-// Full-depth openings through the floor between the ledges.
-// These are in the sensing zone only — the contact zone has solid floor.
-// The window width is the space between the two ledges (nearly full electrode width).
-module sensor_windows() {
-    win_x_start = sensing_x_start + 0.5;  // small margin from stop wall
-    win_x_length = sensor_window_length;
-
-    for (yc = [mip_y_center, nip_y_center]) {
-        translate([win_x_start, yc - sensor_window_width/2, -0.1])
-            cube([win_x_length, sensor_window_width, bottom_shell_height + 0.2]);
-    }
-}
-
-// ---- Spring contact holes ----
-// Through-holes in the contact zone floor for pogo pins.
-// Pins protrude up through the floor to contact electrode pads.
-module spring_contact_holes() {
-    pin_span = (spring_contacts_per_elec - 1) * electrode_pad_pitch;
-    first_y = -pin_span / 2;
-
-    for (yc = [mip_y_center, nip_y_center]) {
-        for (i = [0 : spring_contacts_per_elec - 1]) {
-            pin_y = yc + first_y + i * electrode_pad_pitch;
-
-            translate([contact_x_center, pin_y, -0.1])
-                cylinder(d=spring_contact_hole, h=ledge_height + 0.5);
+    // Chamfered funnel at the entry face
+    chamfer_exp = insertion_chamfer_depth * tan(insertion_chamfer_angle);
+    translate([pod_length/2 - wall_thickness - insertion_chamfer_depth,
+               -slot_width/2 - chamfer_exp,
+               -0.1])
+        hull() {
+            translate([0, chamfer_exp, 0])
+                cube([0.1,
+                      slot_width,
+                      ledge_height + electrode_board_thickness + slot_clearance + 0.1]);
+            translate([insertion_chamfer_depth + wall_thickness, 0, 0])
+                cube([0.1,
+                      slot_width + chamfer_exp * 2,
+                      ledge_height + electrode_board_thickness + slot_clearance + 0.1]);
         }
-    }
-}
-
-// ---- Flex cable pass-through ----
-module flex_cable_passthrough() {
-    // MIP side (-Y wall)
-    translate([flex_passthrough_x - flex_passthrough_width/2,
-               -pod_width/2 - 0.1,
-               bottom_shell_height - flex_passthrough_height])
-        cube([flex_passthrough_width, wall_thickness + 0.2, flex_passthrough_height + 0.1]);
-
-    // NIP side (+Y wall)
-    translate([flex_passthrough_x - flex_passthrough_width/2,
-               pod_width/2 - wall_thickness - 0.1,
-               bottom_shell_height - flex_passthrough_height])
-        cube([flex_passthrough_width, wall_thickness + 0.2, flex_passthrough_height + 0.1]);
 }
 
 // ---- Ventilation grooves ----
-// On the outer skin-facing surfaces of the perimeter walls.
+// Shallow channels on the outer bottom face (skin side), flanking the skin window.
+// Help air circulate under the device and prevent moisture pooling.
 module ventilation_grooves() {
-    groove_positions_y = [
-        0,
-        -(electrode_gap/2 + electrode_width + wall_thickness/2),
-         (electrode_gap/2 + electrode_width + wall_thickness/2),
-    ];
+    groove_length = skin_window_width - 2;
+    groove_x = skin_win_x_start + 1;
 
-    groove_length = sensor_window_length;
-    groove_x_start = sensing_x_start + 0.5;
+    spacing = (skin_window_length + 4) / max(vent_groove_count - 1, 1);
 
-    for (gy = groove_positions_y) {
-        translate([groove_x_start, gy - vent_groove_width/2, -0.1])
+    for (i = [0 : vent_groove_count - 1]) {
+        gy = -skin_window_length/2 - 2 + i * spacing;
+        translate([groove_x, gy - vent_groove_width/2, -0.1])
             cube([groove_length, vent_groove_width, vent_groove_depth + 0.1]);
     }
 }
 
 // ---- Alignment pin holes ----
+// Receive pins from the top shell for registration.
+// Asymmetric placement prevents 180-degree assembly error.
 module alignment_pin_holes() {
     hole_d = alignment_pin_diameter + alignment_hole_clearance * 2;
 
-    translate([align_pin1_x, align_pin1_y, bottom_shell_height - alignment_pin_height])
+    // Pin 1: round hole
+    translate([align_pin1_x, align_pin1_y,
+               bottom_shell_height - alignment_pin_height])
         cylinder(d=hole_d, h=alignment_pin_height + 0.1);
 
-    translate([align_pin2_x, align_pin2_y, bottom_shell_height - alignment_pin_height])
+    // Pin 2: slotted hole (accommodates tolerance)
+    translate([align_pin2_x, align_pin2_y,
+               bottom_shell_height - alignment_pin_height])
         hull() {
             cylinder(d=hole_d, h=alignment_pin_height + 0.1);
             translate([0.5, 0, 0])
@@ -311,43 +171,73 @@ module alignment_pin_holes() {
 }
 
 // ---- Clip receiver slots ----
+// Rectangular notches in the perimeter walls where top shell
+// snap-fit hooks engage.
 module clip_receiver_slots() {
-    slot_width = clip_width + 0.4;
+    notch_w = clip_width + 0.4;
 
     clip_x_positions = [
-        -pod_length/2 + pod_corner_radius + 4,
-         pod_length/2 - pod_corner_radius - 4 - clip_width,
+        -pod_length/2 + pod_corner_radius + 3,
+         pod_length/2 - pod_corner_radius - 3 - clip_width,
     ];
 
     for (cx = clip_x_positions) {
-        translate([cx - 0.2, -pod_width/2 - 0.1, -0.1])
-            cube([slot_width, wall_thickness + 0.2, bottom_shell_height + 0.2]);
+        for (y_sign = [-1, 1]) {
+            y_pos = (y_sign == -1)
+                ? -pod_width/2 - 0.1
+                :  pod_width/2 - wall_thickness - 0.1;
 
-        translate([cx - 0.2, pod_width/2 - wall_thickness - 0.1, -0.1])
-            cube([slot_width, wall_thickness + 0.2, bottom_shell_height + 0.2]);
+            translate([cx - 0.2, y_pos, -0.1])
+                cube([notch_w, wall_thickness + 0.2, bottom_shell_height + 0.2]);
+        }
     }
 }
 
 // ---- GSR pad holes ----
+// Through-holes in the bottom face for galvanic skin response electrodes.
+// Metal pads flush with the skin face provide sweat/contact detection.
 module gsr_pad_holes() {
-    for (x = [-gsr_pad_spacing/2, gsr_pad_spacing/2]) {
-        translate([x, -pod_width/2 + gsr_pad_offset_y + pod_corner_radius, -0.1])
+    for (x_off = [-gsr_pad_spacing/2, gsr_pad_spacing/2]) {
+        translate([x_off, gsr_pad_y_offset, -0.1])
             cylinder(d=gsr_pad_diameter, h=bottom_shell_height + 0.2);
     }
 }
 
+// ---- Orientation key ----
+// A small notch at one corner of the slot entry that matches the
+// corner chamfer on the electrode board. The electrode can only be
+// inserted with the correct orientation (prevents MIP/NIP swap).
+module orientation_key() {
+    // Chamfer notch at the -Y, stop-wall (-X) corner of the slot
+    translate([slot_x_start - 0.1,
+               -slot_width/2 - 0.1,
+               -0.1])
+        cube([chamfer_size + 0.2,
+              chamfer_size + 0.2,
+              bottom_shell_height + 0.2]);
+}
+
 // ---- Strap lugs ----
+// Protrusions at ±X ends with holes for an 18mm quick-release strap.
 module strap_lugs() {
     for (end = [-1, 1]) {
-        x_pos = end * (pod_length/2 + lug_extension/2);
+        x_base = end * pod_length/2;
+        x_outer = x_base + end * lug_extension;
 
-        translate([x_pos - lug_extension/2, -strap_width/2, 0])
+        // Lug body
+        translate([min(x_base, x_outer), -strap_width/2, 0])
             cube([lug_extension, strap_width, lug_height]);
 
+        // Strap pin holes through each side of the lug
+        lug_center_x = x_base + end * lug_extension / 2;
         for (side = [-1, 1]) {
-            translate([x_pos, side * (strap_width/2), lug_height/2])
+            translate([lug_center_x,
+                       side * strap_width/2,
+                       lug_height/2])
                 rotate([0, 90, 0])
-                    cylinder(d=lug_hole_diameter, h=lug_extension + 0.2, center=true);
+                    cylinder(d=lug_hole_diameter,
+                             h=lug_extension + 0.2,
+                             center=true);
         }
     }
 }

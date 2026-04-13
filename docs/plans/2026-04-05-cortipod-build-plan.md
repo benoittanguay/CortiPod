@@ -1048,3 +1048,17 @@ Week 8:    Phase 6.2 — Final assembly
 
 Week 9+:   Iterate based on results
 ```
+
+---
+
+## Future Improvements
+
+Post-build enhancements to explore once the core prototype is validated.
+
+### Blood Cortisol Estimation via Population Average Ratio
+
+The MIP sensor reports cortisol concentration in sweat. To estimate blood (serum) cortisol levels without per-user saliva calibration, apply a fixed population-average conversion factor. Published literature suggests sweat cortisol is approximately 1-2% of serum cortisol. Applying a single multiplier (e.g., serum ≈ sweat × 70) would give a rough blood-level estimate. Display this as a range with wide confidence bands (±40-60%) rather than a precise number, since the sweat-to-blood ratio varies across individuals due to differences in sweat gland permeability, local blood perfusion, sweat rate, and skin thickness.
+
+### Self-Calibrating Blood Cortisol via Diurnal Curve Fitting
+
+A more accurate approach to inferring blood cortisol without saliva kits. The diurnal cortisol rhythm follows a well-characterized shape: sharp peak 20-30 minutes after waking (cortisol awakening response), steep decline through the morning, gradual tapering through the afternoon, and a trough in late evening. After collecting 2-3 days of continuous CortiPod readings, fit the user's sweat cortisol curve to the known diurnal template. The scaling factor that best maps their sweat readings onto the expected blood cortisol curve becomes their personal conversion ratio — effectively achieving personal calibration purely from CortiPod data, with no external test required. This could be refined over time as more data accumulates.

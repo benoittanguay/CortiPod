@@ -1,18 +1,16 @@
 # CortiPod Calibration Guide
 
-> How to make the sensor's electrical readings mean something — converting microamps to cortisol concentration.
+> How to make the sensor's electrical readings mean something — converting microamps to sweat cortisol concentration.
 
 ---
 
 ## Table of Contents
 
 1. [What is Calibration and Why You Need It](#what-is-calibration)
-2. [The Two Types of Calibration](#two-types)
-3. [Lab Calibration (Do This First)](#lab-calibration)
-4. [Personal Calibration (Do This On-Body)](#personal-calibration)
-5. [How the Math Works](#the-math)
-6. [When to Recalibrate](#when-to-recalibrate)
-7. [Troubleshooting](#troubleshooting)
+2. [Lab Calibration](#lab-calibration)
+3. [How the Math Works](#the-math)
+4. [When to Recalibrate](#when-to-recalibrate)
+5. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -35,27 +33,7 @@ Think of it like a thermometer: the mercury rises a certain distance, but withou
 
 ---
 
-## The Two Types of Calibration
-
-### 1. Lab Calibration (controlled, on the bench)
-
-**When:** Before first use, and whenever you make a new sensor strip.
-
-**What:** Test the sensor against known cortisol concentrations in synthetic sweat. Builds a full calibration curve (9+ data points).
-
-**Accuracy:** High — controlled conditions, known concentrations.
-
-### 2. Personal Calibration (on-body, real-world)
-
-**When:** After lab calibration, first few days of wearing the device.
-
-**What:** Take a saliva cortisol test and a CortiPod reading at the same time. Creates 1-3 "anchor points" that adjust the lab calibration to your body's specific sweat-to-blood cortisol ratio.
-
-**Why it's needed:** Lab calibration tells you the sensor responds linearly to cortisol. Personal calibration tells you what YOUR cortisol levels map to — because sweat cortisol concentration varies between individuals (skin thickness, sweat gland density, local blood flow).
-
----
-
-## Lab Calibration (Do This First)
+## Lab Calibration
 
 ### What you need
 
@@ -255,90 +233,6 @@ Validation:
 
 ---
 
-## Personal Calibration (Do This On-Body)
-
-Lab calibration gives you a sensor that accurately measures cortisol in synthetic sweat. But your actual sweat is different from synthetic sweat, and sweat cortisol doesn't map 1:1 to blood/saliva cortisol. Personal calibration adjusts for this.
-
-### What you need
-
-- CortiPod device, assembled and working
-- Saliva cortisol test kit (Everlywell or ZRT Lab, ~$30 per kit)
-- The CortiPod iPhone app
-
-### Procedure
-
-#### Calibration Point 1: Morning (high cortisol)
-
-```
-Timing: Within 30 minutes of waking up (cortisol is highest)
-
-1. Put on the CortiPod
-2. Wait 10 minutes for sweat to accumulate on the sensor
-3. Take a CortiPod reading (tap "Measure" in the app)
-4. Immediately take the saliva cortisol test per kit instructions
-5. When saliva results come back (24-48 hours for mail-in kits,
-   or use a rapid kit):
-   - Open the app → Calibration → Add Point
-   - Enter the saliva result (e.g., "18.5 ng/dL")
-   - The app pairs it with the CortiPod raw reading from that time
-```
-
-#### Calibration Point 2: Afternoon (medium cortisol)
-
-```
-Timing: 2-4 PM (cortisol is moderate)
-
-Same procedure:
-1. CortiPod reading
-2. Simultaneous saliva test
-3. Enter result when available
-```
-
-#### Calibration Point 3: Evening (low cortisol)
-
-```
-Timing: 8-10 PM (cortisol is near daily minimum)
-
-Same procedure:
-1. CortiPod reading
-2. Simultaneous saliva test
-3. Enter result when available
-```
-
-### What the app does with these points
-
-```
-You now have 3 pairs:
-  (CortiPod_raw_1, Saliva_1)  — morning
-  (CortiPod_raw_2, Saliva_2)  — afternoon
-  (CortiPod_raw_3, Saliva_3)  — evening
-
-The app fits a personal correction factor:
-
-  True_cortisol = Lab_calibrated_value × personal_scale + personal_offset
-
-Where personal_scale and personal_offset are derived from 
-your 3 calibration points.
-
-This accounts for:
-  - Your skin's specific sweat-to-blood cortisol ratio
-  - Your sweat gland density at the wrist
-  - Your baseline skin conductance
-  - Differences between sweat cortisol and saliva cortisol units
-```
-
-### How many calibration points do you need?
-
-| Points | Accuracy | Effort |
-|--------|----------|--------|
-| 1 | Rough (~30-40% error) | Minimal |
-| 3 | Good (~15-20% error) | One day of saliva tests |
-| 5-7 | Best (~10-15% error) | 2-3 days of saliva tests |
-
-3 points is the sweet spot for a prototype. The diminishing returns after 5 points aren't worth the cost of additional saliva kits.
-
----
-
 ## How the Math Works
 
 ### The full signal processing pipeline
@@ -385,18 +279,12 @@ Step 5: Sweat rate normalization (via GSR)
         │
         ▼
 Step 6: Apply lab calibration curve
-        │  Conc_lab = 10 ^ ((Delta_I_final - intercept) / slope)
+        │  Conc = 10 ^ ((Delta_I_final - intercept) / slope)
         │
-        │  Uses the slope + intercept from lab calibration (Step 7 above)
-        │
-        ▼
-Step 7: Apply personal calibration
-        │  Conc_personal = Conc_lab × personal_scale + personal_offset
-        │
-        │  Uses the correction factor from your saliva test calibration
+        │  Uses the slope + intercept from lab calibration
         │
         ▼
-Step 8: Confidence scoring
+Step 7: Confidence scoring
         │  confidence = contact_quality × temp_penalty × gsr_penalty
         │
         │  Penalize readings taken in extreme conditions:
@@ -405,7 +293,7 @@ Step 8: Confidence scoring
         │  - GSR near zero (no sweat detected): reduce confidence
         │
         ▼
-Final output: Cortisol = XX ng/mL (confidence: high/medium/low)
+Final output: Sweat cortisol = XX ng/mL (confidence: high/medium/low)
 ```
 
 ### Example walkthrough
@@ -430,17 +318,13 @@ Step 4: Delta_I_comp2 = 3.2 × (1 + 0.005 × (50 - 45))
 Step 5: Delta_I_final = 3.28 × (3.2 / 2.8)
                       = 3.28 × 1.143
                       = 3.75 uA
-Step 6: Conc_lab = 10 ^ ((3.75 - 0.5) / 1.8)
-                 = 10 ^ (1.806)
-                 = 63.9 ng/mL
-Step 7: Conc_personal = 63.9 × 1.15 + (-2.3)
-                      = 71.2 ng/mL
-Step 8: Confidence = 0.92 × 1.0 × 1.0 = 0.92 (high)
+Step 6: Conc = 10 ^ ((3.75 - 0.5) / 1.8)
+             = 10 ^ (1.806)
+             = 63.9 ng/mL
+Step 7: Confidence = 0.92 × 1.0 × 1.0 = 0.92 (high)
 
-Output: Cortisol = 71.2 ng/mL (confidence: high)
+Output: Sweat cortisol = 63.9 ng/mL (confidence: high)
 ```
-
-This is a midday reading — reasonable for ~2 PM.
 
 ---
 
@@ -455,30 +339,6 @@ This is a midday reading — reasonable for ~2 PM.
 | Temperature coefficient seems off | Recalibrate at 2-3 temperatures |
 | R-squared drops below 0.90 | Sensor may be losing selectivity |
 
-### Personal recalibration (1-3 saliva tests)
-
-| Trigger | Why |
-|---------|-----|
-| New sensor strip + lab recalibration | The lab curve changed, personal correction may need adjusting |
-| Readings seem consistently off vs how you feel | Personal correction may have drifted |
-| Season change (summer → winter) | Skin hydration and sweat patterns change |
-| Every 2-3 months as a check | Good practice |
-
-### Quick recalibration (1 saliva test)
-
-If readings seem off but you don't want to redo the full process:
-
-```
-1. Take a single simultaneous CortiPod + saliva reading
-2. Compare CortiPod prediction vs saliva result
-3. If within 20%: no action needed
-4. If off by >20%: 
-   - Take 2 more calibration points (different times of day)
-   - Update personal calibration
-5. If off by >50%:
-   - Sensor strip may need replacement
-   - Redo full lab calibration with new strip
-```
 
 ---
 
@@ -512,7 +372,7 @@ If readings seem off but you don't want to redo the full process:
 
 ### "On-body readings don't match lab readings"
 
-**Expected.** Lab calibration uses synthetic sweat at controlled temperature. On-body conditions are different. This is exactly why personal calibration exists. Complete the personal calibration steps before evaluating on-body accuracy.
+**Expected.** Lab calibration uses synthetic sweat at controlled temperature. On-body conditions are different — real sweat composition, skin temperature, and sweat rate all affect the reading. The temperature, humidity, and GSR compensation steps in the signal processing pipeline account for much of this, but some offset is normal. Use consistent wearing conditions (same wrist position, similar activity level) for the most comparable readings.
 
 ### "Contact quality is always low"
 
