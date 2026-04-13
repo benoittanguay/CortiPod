@@ -3,31 +3,36 @@
 //
 // All measurements in millimeters.
 //
-// DESIGN: 2-piece shell with bottom-loading single electrode slot
+// DESIGN: Slide-on 2-piece enclosure with U-channel rails
 //
 //   TOP SHELL (the "brain"):
-//     Houses PCB, battery. Fully sealed — no lever cutouts.
+//     Houses PCB, battery. Strap lugs at ±X ends.
 //     Pogo pins mounted on the underside of the main PCB, pressing DOWN
 //     onto the back contacts of the electrode board.
+//     U-channel rails on the underside (±Y sides) receive the bottom shell.
+//     Fully sealed — only openings are pogo pin pass-throughs.
 //
-//   BOTTOM SHELL (the "frame"):
-//     Single electrode slot for the 22x22mm dual electrode PCB.
-//     The electrode slides in from one end.
-//     Skin window exposes the sensing face (front) to sweat.
-//     The electrode board's back contacts face UP toward the pogo pins.
+//   BOTTOM SHELL (electrode tray):
+//     Minimal tray holding the 22x22mm dual electrode PCB.
+//     Lips on ±Y edges slide into the top shell's U-channel rails.
+//     Electrode drops into the pocket, sensing face down.
+//     Detent click locks tray in place; pogo pins hold electrode firm.
 //
-//   Assembly: snap shells together, slide electrode in from +X end.
-//   Pogo pins on main PCB engage back contacts automatically.
+//   CHARGING CRADLE:
+//     Same outer profile as bottom shell. Slides into same rails.
+//     4 contact pads aligned with pogo pins carry USB-C power.
+//
+//   Assembly: wear top shell on strap, slide bottom shell in from +Y.
+//   Pogo pins on main PCB engage electrode back contacts automatically.
 //
 // DATUMS:
-//   Datum A: parting line (Z = bottom_shell_height, where shells meet)
-//   Datum B: electrode end-stop face (-X inner wall)
+//   Datum A: top shell underside (Z = bottom_shell_height, rail interface)
+//   Datum B: hard stop face (-Y inner wall of rail cavity)
 //   Datum C: pod centerline (Y = 0, symmetry plane)
 //
 // ENGINEERING REFERENCES:
+//   See docs/superpowers/specs/2026-04-13-slide-on-enclosure-design.md
 //   See docs/enclosure-design-engineering-reference.md
-//   See docs/mechanical-engineering-guidelines.md
-//   See docs/custom-electrode-fabrication-guide.md
 // =============================================================================
 
 // ---- Custom Dual PCB Electrode (MIP + NIP on one board) ----
@@ -70,10 +75,10 @@ pod_corner_radius    = 3.0;    // mm
 wall_thickness       = 1.5;    // mm
 
 // ---- Shell split ----
-// Bottom shell: electrode slot + skin window
+// Bottom shell: electrode tray
 // Top shell: PCB + battery + pogo pins press down onto electrode back
 top_shell_height     = 6.5;    // mm (PCB + battery + pogo clearance)
-bottom_shell_height  = 2.5;    // mm (electrode slot + skin window)
+bottom_shell_height  = 2.5;    // mm (electrode tray height)
 
 // ---- Ergonomics ----
 wrist_curvature_radius = 40.0;  // mm — convex radius on bottom skin face
@@ -111,40 +116,50 @@ insertion_chamfer_angle  = 25;    // degrees (gentler than old 30°)
 // DOWN into the bottom shell cavity to contact the electrode back pads.
 // Pin bodies sit in the mating face wall; pads on top connect to the
 // main PCB via short wires or solder bridges.
-//
-// Z-stack: parting line at Z=2.5, electrode back at Z=1.1.
-// Pins need to bridge 1.4mm. With 2.0mm total travel, they compress
-// ~0.6mm when the electrode is installed — good contact force.
 spring_contact_count     = 4;
 spring_contact_diameter  = 1.0;   // mm (Mill-Max 0906 = 0.98mm)
 spring_contact_hole      = 1.3;   // mm (bore diameter in mating face)
 spring_contact_travel    = 0.5;   // mm (compression stroke)
-pogo_total_height        = 3.0;   // mm (full pin length — protrudes 1.5mm below mating face)
-pogo_protrusion_below    = pogo_total_height - wall_thickness; // 1.5mm below mating face
-// Z-stack check: pin tip unloaded at Z = 2.5 - 1.5 = 1.0
+pogo_total_height        = 2.5;   // mm (full pin length — protrudes 1.0mm below mating face)
+pogo_protrusion_below    = pogo_total_height - wall_thickness; // 1.0mm below mating face
+// Z-stack check: pin tip unloaded at Z = 2.5 - 1.0 = 1.5
 //                electrode back at Z = 0.5 + 0.8 = 1.3
-//                compression = 1.3 - 1.0 = 0.3mm (good contact, within 0.5mm travel)
+//                compression = 1.5 - 1.3 = 0.2mm (within 0.5mm travel)
 
-// ---- Strap lugs (18mm quick-release) ----
+// ---- Strap lugs (18mm quick-release, on TOP SHELL ±X ends) ----
 strap_width          = 18.0;
 lug_width            = 2.5;
 lug_height           = 3.0;
 lug_hole_diameter    = 1.5;
 lug_extension        = 3.0;
 
-// ---- GSR electrode pads ----
-// Two exposed metal pads on the bottom shell skin face
-// for galvanic skin response (sweat/contact detection).
-// Positioned flanking the skin window.
-gsr_pad_diameter     = 4.0;
-gsr_pad_spacing      = 20.0;   // mm center-to-center
-gsr_pad_y_offset     = 0;      // mm from pod center (centered)
+// ---- U-channel rails (on top shell underside, ±Y sides) ----
+// Bottom shell lips slide into these channels from the +Y end.
+// Channel overhang prevents Z-axis pullout.
+rail_channel_width    = 1.2;    // mm — width of the channel slot
+rail_channel_depth    = 0.8;    // mm — overhang depth (captures lip)
+rail_wall_thickness   = 1.0;    // mm — rail wall material
+rail_length           = pod_width - wall_thickness * 2;  // ~25mm usable
 
-// ---- Magnetic charging pads ----
-mag_pad_diameter     = 5.0;
-mag_pad_depth        = 1.2;
-mag_pad_spacing      = 12.0;
-charge_pad_diameter  = 3.0;
+// ---- Detent (retention click) ----
+detent_bump_height    = 0.3;    // mm — raised dimple on channel floor
+detent_bump_diameter  = 1.5;    // mm
+detent_position       = 3.0;    // mm from -Y hard stop (fully seated position)
+
+// ---- Bottom shell (electrode tray) ----
+tray_width  = pod_length - wall_thickness * 2 - rail_wall_thickness * 2;  // ~23mm
+tray_length = pod_width - wall_thickness;  // ~26.5mm (open at +Y)
+tray_height = bottom_shell_height;  // 2.5mm
+tray_lip_thickness = 1.0;    // mm — captured by rail channel
+tray_lip_height    = 0.8;    // mm — matches channel depth
+
+// ---- Charging cradle ----
+// Same outer profile as bottom shell tray. Slides into same rails.
+// USB-C port on +Y face (exposed end).
+usbc_port_width    = 9.0;    // mm (USB-C receptacle body width)
+usbc_port_height   = 3.3;    // mm (USB-C receptacle body height)
+usbc_port_depth    = 7.5;    // mm (receptacle insertion depth)
+cradle_pad_diameter = 2.0;   // mm (gold-plated contact pads on cradle top)
 
 // ---- Main PCB (inside top shell) ----
 pcb_length           = 24.0;   // mm (smaller — fits above electrode)
@@ -156,38 +171,8 @@ battery_length       = 18.0;   // mm (compact cell, stacks above PCB)
 battery_width        = 12.0;   // mm
 battery_thickness    = 2.5;    // mm (thinner cell for reduced height)
 
-// ---- Alignment pins ----
-alignment_pin_diameter = 2.0;
-alignment_pin_height   = 2.0;
-alignment_hole_clearance = 0.1;
-
-// Asymmetric placement prevents 180° assembly error
-align_pin1_x = -pod_length/2 + 5;
-align_pin1_y = -pod_width/2 + 4;
-align_pin2_x =  pod_length/2 - 6;
-align_pin2_y =  pod_width/2 - 4;
-
-// ---- Snap-fit clips ----
-clip_width           = 3.0;
-clip_depth           = 0.8;
-clip_beam_thickness  = 0.8;
-clip_beam_length     = 5.0;
-
-// ---- O-ring groove ----
-oring_groove_width   = 1.5;
-oring_groove_depth   = 0.75;
-oring_cs             = 1.0;
-
-// ---- Ventilation grooves (on bottom shell skin face) ----
-vent_groove_width    = 0.8;    // mm
-vent_groove_depth    = 0.3;    // mm
-vent_groove_count    = 3;
-
 // ---- Tolerances ----
 printer_tolerance    = 0.2;
-
-// ---- LED status indicator ----
-led_hole_diameter    = 2.0;    // mm (light pipe hole in top shell)
 
 // ---- Derived: electrode Z position ----
 // The electrode front face (sensing) sits at Z = ledge_height from bottom of pod.
