@@ -2,6 +2,11 @@
 """
 Panelize CortiPod dual electrode: 4x3 grid with V-score lines.
 Uses KiCad 10 pcbnew API.
+
+JLCPCB V-cut minimum panel size: 70mm x 70mm.
+Panel uses 2mm breakaway rails on top and bottom to meet the
+70mm height requirement while keeping cell positions unchanged
+for stencil compatibility.
 """
 import pcbnew
 import os
@@ -13,6 +18,7 @@ dst_path = os.path.join(script_dir, "cortipod-electrode-panel.kicad_pcb")
 COLS, ROWS = 4, 3
 CELL_W = pcbnew.FromMM(22.0)
 CELL_H = pcbnew.FromMM(22.0)
+RAIL_H = pcbnew.FromMM(3.0)  # breakaway rails (JLCPCB minimum edge rail: 3mm)
 
 panel = pcbnew.LoadBoard(src_path)
 
@@ -20,12 +26,23 @@ panel = pcbnew.LoadBoard(src_path)
 bb = panel.GetBoardEdgesBoundingBox()
 src_x, src_y = bb.GetX(), bb.GetY()
 
-# Panel placement centered on A4
-panel_w, panel_h = COLS * CELL_W, ROWS * CELL_H
+# Cell area dimensions (unchanged from original)
+cell_area_w = COLS * CELL_W
+cell_area_h = ROWS * CELL_H
+
+# Total panel with rails
+panel_w = cell_area_w
+panel_h = cell_area_h + 2 * RAIL_H  # 66 + 6 = 72mm
+
+# Panel placement centered on A4; cell area offset by top rail
 panel_x = pcbnew.FromMM((297.0 - pcbnew.ToMM(panel_w)) / 2.0)
 panel_y = pcbnew.FromMM((210.0 - pcbnew.ToMM(panel_h)) / 2.0)
-dx_base = panel_x - src_x
-dy_base = panel_y - src_y
+# Cell area starts after top rail
+cell_area_x = panel_x
+cell_area_y = panel_y + RAIL_H
+
+dx_base = cell_area_x - src_x
+dy_base = cell_area_y - src_y
 
 # Remove existing Edge.Cuts, Dwgs.User, Cmts.User graphics
 to_remove = [d for d in panel.GetDrawings()
@@ -77,7 +94,7 @@ for row in range(ROWS):
                 clone.SetEnd(pcbnew.VECTOR2I(e.x + dx, e.y + dy))
             panel.Add(clone)
 
-# Panel outline (Edge.Cuts)
+# Panel outline (Edge.Cuts) — includes rails
 px, py = panel_x, panel_y
 for (x1,y1),(x2,y2) in [
     ((px,py),(px+panel_w,py)),
@@ -93,6 +110,7 @@ for (x1,y1),(x2,y2) in [
     panel.Add(line)
 
 # V-score lines (Cmts.User)
+# Vertical: between columns (unchanged)
 for col in range(1, COLS):
     x = px + col * CELL_W
     line = pcbnew.PCB_SHAPE(panel)
@@ -103,8 +121,9 @@ for col in range(1, COLS):
     line.SetWidth(pcbnew.FromMM(0.15))
     panel.Add(line)
 
-for row in range(1, ROWS):
-    y = py + row * CELL_H
+# Horizontal: top rail boundary, between rows, bottom rail boundary
+for i in range(ROWS + 1):
+    y = cell_area_y + i * CELL_H
     line = pcbnew.PCB_SHAPE(panel)
     line.SetShape(pcbnew.SHAPE_T_SEGMENT)
     line.SetStart(pcbnew.VECTOR2I(px, y))
@@ -115,7 +134,7 @@ for row in range(1, ROWS):
 
 # Label
 txt = pcbnew.PCB_TEXT(panel)
-txt.SetText(f"CortiPod Electrode Panel {COLS}x{ROWS} = {COLS*ROWS} cells - V-SCORE at marked lines")
+txt.SetText(f"CortiPod Electrode Panel {COLS}x{ROWS} = {COLS*ROWS} cells + rails - V-SCORE at marked lines")
 txt.SetPosition(pcbnew.VECTOR2I(px + panel_w // 2, py - pcbnew.FromMM(3)))
 txt.SetLayer(pcbnew.Cmts_User)
 txt.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(1.0), pcbnew.FromMM(1.0)))
@@ -124,5 +143,8 @@ panel.Add(txt)
 
 panel.Save(dst_path)
 print(f"Panel saved: {dst_path}")
-print(f"Size: {pcbnew.ToMM(panel_w):.0f}mm x {pcbnew.ToMM(panel_h):.0f}mm")
+print(f"Total panel: {pcbnew.ToMM(panel_w):.0f}mm x {pcbnew.ToMM(panel_h):.0f}mm (meets 70x70mm V-cut minimum)")
+print(f"Cell area:   {pcbnew.ToMM(cell_area_w):.0f}mm x {pcbnew.ToMM(cell_area_h):.0f}mm")
+print(f"Rails:       {pcbnew.ToMM(RAIL_H):.0f}mm top + {pcbnew.ToMM(RAIL_H):.0f}mm bottom (breakaway)")
 print(f"Cells: {COLS}x{ROWS} = {COLS*ROWS}")
+print(f"Cell positions unchanged — stencils remain compatible")

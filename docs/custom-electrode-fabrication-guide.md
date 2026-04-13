@@ -121,41 +121,37 @@ The two separate buses allow MIP and NIP electropolymerization in separate passe
 
 ## Panelization
 
-Cell size: 22mm x 26mm. Standard JLCPCB panel: 100mm x 80mm.
+Cell size: 22mm x 22mm. JLCPCB V-cut minimum panel size: 70mm x 70mm.
 
 **Grid: 4 columns x 3 rows = 12 complete sensor assemblies per panel.**
 
 5 panels = **60 complete MIP+NIP sensor assemblies** for ~$18-25 CAD.
 
-### Using KiKit
+### Panel dimensions
+
+**Total panel: 88mm x 72mm** (cell area: 88mm x 66mm + 3mm breakaway rails top and bottom).
+
+The 3mm rails are blank waste strips that meet the JLCPCB minimum edge rail width (3mm) and pad the panel above the 70mm V-cut minimum. They snap off along V-score lines after fabrication.
+
+### Automated panelization (recommended)
 
 ```bash
-pip install kikit
-
-kikit panelize grid \
-  --gridsize 4 3 \
-  --space 0 \
-  --tabwidth 3 \
-  --tabheight 3 \
-  --vcuts \
-  cortipod-electrode.kicad_pcb \
-  cortipod-electrode-panel.kicad_pcb
+# Run from electrode-pcb/ directory with KiCad 10 Python environment
+python panelize.py
 ```
 
-Panel dimensions: 88mm x 78mm (fits within 100x80mm with rail margins).
+This generates `cortipod-electrode-panel.kicad_pcb` with the 4x3 grid, breakaway rails, Edge.Cuts outline, and V-score lines on Cmts.User.
 
-### Manual panelization
-
-Cell center positions on a 100x80mm board:
+### V-score line positions
 
 ```
-         Col 1      Col 2      Col 3      Col 4
-Row 1:  (11, 13)   (33, 13)   (55, 13)   (77, 13)
-Row 2:  (11, 39)   (33, 39)   (55, 39)   (77, 39)
-Row 3:  (11, 65)   (33, 65)   (55, 65)   (77, 65)
+Vertical (between columns): X = 22, 44, 66mm from panel left edge
+Horizontal (4 lines total):
+  Y = 3mm   — top rail / cell boundary
+  Y = 25mm  — row 1 / row 2 boundary
+  Y = 47mm  — row 2 / row 3 boundary
+  Y = 69mm  — cell / bottom rail boundary
 ```
-
-V-score lines at: X = 22, 44, 66 (vertical) and Y = 26, 52 (horizontal).
 
 ---
 
@@ -173,7 +169,7 @@ In KiCad: **File -> Plot** (or **File -> Fabrication Outputs -> Gerbers**).
 | B.Mask | Back solder mask openings (exposes contact pads) |
 | F.SilkS | Front labels (MIP, NIP, CE, RE) |
 | B.SilkS | Back labels |
-| Edge.Cuts | Board outline (22x26mm cell or panelized) |
+| Edge.Cuts | Board outline (22x22mm cell or 88x70mm panelized) |
 | Cmts.User | V-score line locations |
 
 Also generate: **Drill file** (Excellon, `.drl`)
@@ -197,7 +193,7 @@ Go to [jlcpcb.com](https://jlcpcb.com) -> **Order Now** -> upload zipped Gerbers
 |-----------|-------|
 | Base material | FR4 |
 | Layers | 2 |
-| Dimensions | 100 x 80 mm (panelized) or 22 x 26 mm (single cell) |
+| Dimensions | 88 x 72 mm (panelized with 3mm rails) or 22 x 22 mm (single cell) |
 | PCB qty | 5 panels (= 60 sensor assemblies) |
 | PCB thickness | **0.8 mm** |
 | Surface finish | **Hard Gold** |
@@ -211,8 +207,8 @@ Go to [jlcpcb.com](https://jlcpcb.com) -> **Order Now** -> upload zipped Gerbers
 
 ```
 V-SCORE: Please add V-score lines as marked on Cmts.User layer.
-This is a panelized design with 12 identical cells (4x3 grid).
-Board thickness: 0.8mm.
+This is a panelized design: 12 identical cells (4x3 grid) with 3mm
+breakaway rails on top and bottom edges. Board thickness: 0.8mm.
 ```
 
 **Estimated cost:** ~$18-28 CAD for 5 panels (60 sensor assemblies) with hard gold.
