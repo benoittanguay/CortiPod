@@ -32,7 +32,7 @@ module charging_cradle() {
         }
         usbc_port_slot();
         contact_pad_recesses();
-        detent_recesses();
+        cradle_detent_recesses();
         trace_channel();
     }
 }
@@ -63,12 +63,13 @@ module cradle_lips() {
 
 // ---- USB-C port slot ----
 // Rectangular cutout on the +Y face to accept a USB-C receptacle body.
-// Centered in X and vertically centered within the tray height.
+// Centered in X, bottom-aligned at Z = 0 (covered by top shell when assembled).
+// Height is clipped to tray_height so the slot never exits the top surface.
 module usbc_port_slot() {
     translate([-usbc_port_width/2,
                tray_length/2 - usbc_port_depth,
-               (tray_height - usbc_port_height) / 2])
-        cube([usbc_port_width, usbc_port_depth + 0.1, usbc_port_height]);
+               0])
+        cube([usbc_port_width, usbc_port_depth + 0.1, min(usbc_port_height, tray_height)]);
 }
 
 // ---- Contact pad recesses ----
@@ -92,33 +93,40 @@ module contact_pad_recesses() {
     }
 }
 
-// ---- Detent recesses ----
-// Identical to bottom_shell's detent_recesses so the same top shell rails
+// ---- Cradle detent recesses ----
+// Upward-facing dimples on the bottom face of each lip (Z-axis, matching the
+// bump axis on the top shell channel floor). Geometry identical to
+// tray_detent_recesses in bottom_shell.scad so the same top shell rails
 // click-lock the cradle in the fully seated position.
-module detent_recesses() {
+module cradle_detent_recesses() {
     recess_d     = detent_bump_diameter + 0.2;
     recess_depth = detent_bump_height + 0.1;
 
+    // X position: same as bump_x in top_shell.scad
+    recess_x = -pod_length/2 + wall_thickness + detent_position;
+
     for (y_sign = [-1, 1]) {
-        y_inner = y_sign * (tray_length/2 - tray_lip_thickness);
-        translate([0,
-                   y_inner,
-                   tray_height + tray_lip_height/2])
-            rotate([y_sign * 90, 0, 0])
-                cylinder(d=recess_d, h=recess_depth + 0.1);
+        // Y center of the lip
+        lip_y = y_sign * (tray_length/2 - tray_lip_thickness/2);
+
+        // Drill downward from the bottom face of the lip (Z = tray_height)
+        translate([recess_x, lip_y, tray_height - recess_depth])
+            cylinder(d=recess_d, h=recess_depth + 0.1);
     }
 }
 
 // ---- Trace channel ----
-// Internal pocket (0.8mm tall) for the cradle PCB, sitting just above the
-// cradle floor. 2mm wall margin on all sides keeps the body structurally sound.
+// Internal pocket (0.8mm tall) for the cradle PCB, sitting 0.5mm above the
+// cradle floor. This ensures the pocket starts at Z = 0.5 and ends at
+// Z = 1.3, leaving 1.2mm of material above for contact pad backing.
+// 2mm wall margin on all sides keeps the body structurally sound.
 module trace_channel() {
     wall_margin = 2.0;
     ch_width  = tray_width  - wall_margin * 2;
     ch_length = tray_length - wall_margin * 2;
     ch_height = electrode_board_thickness;   // 0.8mm — matches PCB thickness
 
-    translate([-ch_width/2, -ch_length/2, wall_margin])
+    translate([-ch_width/2, -ch_length/2, 0.5])
         cube([ch_width, ch_length, ch_height + 0.1]);
 }
 

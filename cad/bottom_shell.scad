@@ -3,8 +3,9 @@
 //
 // Slides into the top shell's U-channel rails from +Y. The electrode PCB
 // drops into the pocket from above (sensing face down). Lips on ±Y edges
-// are captured by the top shell rails. Detent dimples on the lip inner faces
-// snap against bumps in the rail channel floor when fully seated.
+// are captured by the top shell rails. Detent dimples on the bottom face
+// of each lip (Z-axis dimples) snap against bumps in the rail channel floor
+// when fully seated.
 //
 // No strap lugs, no GSR pads, no vent grooves, no alignment pins,
 // no snap clip receivers, no insertion opening.
@@ -26,7 +27,7 @@ module bottom_shell() {
         electrode_pocket();
         skin_window();
         orientation_key();
-        detent_recesses();
+        tray_detent_recesses();
     }
 }
 
@@ -81,21 +82,26 @@ module orientation_key() {
               tray_height + 0.2]);
 }
 
-// ---- Detent recesses ----
-// Small dimples on the inner face of each lip that mate with the detent bumps
-// on the top shell rail channel floor, providing a tactile retention click.
-module detent_recesses() {
-    recess_d = detent_bump_diameter + 0.2;
+// ---- Tray detent recesses ----
+// Upward-facing dimples on the bottom face of each lip (Z-axis, matching the
+// bump axis). The bump on the top shell channel floor protrudes upward (+Z);
+// these recesses are drilled from Z = tray_height downward into the lip base.
+// X position matches the bump X (detent_position from the -Y hard stop).
+// Diameter and depth include clearance for a positive snap fit.
+module tray_detent_recesses() {
+    recess_d     = detent_bump_diameter + 0.2;
     recess_depth = detent_bump_height + 0.1;
 
+    // X position: same as bump_x in top_shell.scad
+    recess_x = -pod_length/2 + wall_thickness + detent_position;
+
     for (y_sign = [-1, 1]) {
-        // Inner face of each lip faces the tray centerline
-        y_inner = y_sign * (tray_length/2 - tray_lip_thickness);
-        translate([0,
-                   y_inner,
-                   tray_height + tray_lip_height/2])
-            rotate([y_sign * 90, 0, 0])
-                cylinder(d=recess_d, h=recess_depth + 0.1);
+        // Y center of the lip
+        lip_y = y_sign * (tray_length/2 - tray_lip_thickness/2);
+
+        // Drill downward from the bottom face of the lip (Z = tray_height)
+        translate([recess_x, lip_y, tray_height - recess_depth])
+            cylinder(d=recess_d, h=recess_depth + 0.1);
     }
 }
 
