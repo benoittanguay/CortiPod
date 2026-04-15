@@ -63,6 +63,17 @@ Catecholamines (epinephrine, norepinephrine), peptide hormones (insulin, C-pepti
 
 ### Cumulative Enhancement Stack Example (Testosterone, 1–10 ng/mL)
 
+**Patent-adjusted stack (no AuNP — avoids US9846137 Claim 1):**
+```
+Baseline chronoamperometry on bare gold MIP     LOD ~5 ng/mL
+  + CNT drop-cast layer                          LOD ~2 ng/mL
+  + Switch to SWV                                LOD ~0.5 ng/mL
+  + oPD polymer + overoxidation                  LOD ~0.2 ng/mL
+  + Redox probe amplification                    LOD ~0.1 ng/mL
+  + Larger WE (10mm)                             LOD ~0.06 ng/mL
+```
+
+**Original stack (with AuNP — blocked by US9846137 Claim 1):**
 ```
 Baseline chronoamperometry on bare gold MIP     LOD ~5 ng/mL
   + AuNP electrodeposition                      LOD ~1 ng/mL
@@ -72,7 +83,9 @@ Baseline chronoamperometry on bare gold MIP     LOD ~5 ng/mL
   + Redox probe amplification                    LOD ~0.05 ng/mL
 ```
 
-Practical sweet spot for the platform: **AuNP + oPD + DPV/SWV** yields ~10–20x improvement over baseline with no electrode PCB or electronics changes.
+Practical sweet spot for the platform: **CNT + oPD + DPV/SWV** yields ~10x improvement over baseline with no patent risk. AuNP adds another 3-5x but is blocked by US9846137 Claim 1 (see `patent-landscape-analysis.md` for full analysis and invalidity arguments).
+
+> **Patent note:** AuNP electrodeposition on MIP electrodes for steroid hormones is claimed by US9846137 (Florida International University). All phases use CNT-only enhancement as the design-around. See `docs/patent-landscape-analysis.md` for the complete patent landscape analysis, claim-by-claim review, and design-around strategies per phase.
 
 ---
 
@@ -110,25 +123,29 @@ Cortisone is cortisol's inactive metabolite. The cortisol/cortisone ratio is a c
 ### Sensing Changes
 - New MIP template: DHEA-S at 1 mM during electropolymerization
 - oPD polymer for DHEA-S electrode
+- MWCNT drop-cast electrode enhancement (replaces AuNP — see patent note)
 - DPV measurement mode for DHEA-S channel (AD5941 firmware config change)
 
-### Enhancement Stack
+### Enhancement Stack (Patent-Adjusted — No AuNP)
 
 | Improvement | Effect | Confidence Gain |
 |---|---|---|
 | oPD polymer (DHEA-S template at 1 mM) | Denser cavities better accommodate the sulfate ester group | +3% |
-| AuNP electrodeposition (CV in 1 mM HAuCl4, 20 cycles) | 5–20x surface area; brings lower range (5 ng/mL) comfortably above LOD | +3% |
+| MWCNT drop-cast layer | 2–5x surface area improvement; improves electron transfer kinetics | +2% |
 | Switch to DPV for DHEA-S channel (AD5941 firmware config) | Better S/N than chronoamperometry for this concentration range; $0 cost | +2% |
+| Overoxidation (3-5 CV cycles to +1100 mV) | Adds selectivity for sulfate ester; improves fouling resistance | +1% |
 | Cation-selective Nafion tuning (thicker cast, 1% solution) | DHEA-S is anionic — Nafion repels competing anions while size-excluding proteins; needs empirical thickness optimization | +1% |
 | Redox probe addition ([Fe(CN)6] 5 mM in measurement buffer) | Cavity blockage measured as probe current decrease; amplifies small binding signals | +1% |
 
-**Final confidence with all enhancements: 90–97%**
+**Final confidence with all enhancements: 85–93%**
+
+> **Patent note:** AuNP electrodeposition (+3% gain in original plan) removed to avoid US9846137 Claim 1 ("metallic nanoscopic structures + conductive polymer MIP + steroid hormone"). MWCNT (carbon, not metallic) replaces it with slightly lower but adequate gain. DHEA-S is not in Claim 3's enumerated steroid list, so the fabrication method claim does not apply. See `docs/patent-landscape-analysis.md` for full analysis.
 
 ### Key Risk
 Nafion tuning — DHEA-S is itself anionic, so the membrane charge selectivity must be empirically optimized to reject interferents without blocking the analyte.
 
 ### Product Value
-DHEA-S is the most abundant circulating steroid and a direct adrenal output marker. Combined with cortisol and cortisone, this creates a **sweat adrenal stress panel** — cortisol (acute stress), cortisone (cortisol metabolism), DHEA-S (adrenal reserve/chronic stress). No wearable competitor offers this.
+DHEA-S is the most abundant circulating steroid and a direct adrenal output marker. Combined with cortisol and cortisone, this creates a **sweat adrenal stress panel** — cortisol (acute stress), cortisone (cortisol metabolism), DHEA-S (adrenal reserve/chronic stress). No wearable competitor offers this. Market as "hormonal health panel" — avoid "stress" labeling (see patent marketing guidelines in `docs/patent-landscape-analysis.md`).
 
 ---
 
@@ -139,14 +156,14 @@ DHEA-S is the most abundant circulating steroid and a direct adrenal output mark
 ### Sensing Changes
 - New MIP template: testosterone at 1 mM during electropolymerization
 - oPD polymer with extended overoxidation
-- AuNP + MWCNT composite electrode
+- MWCNT drop-cast electrode enhancement (replaces AuNP — see patent note)
 - SWV measurement mode
 
-### Enhancement Stack
+### Enhancement Stack (Patent-Adjusted — No AuNP)
 
 | Improvement | Effect | Confidence Gain |
 |---|---|---|
-| AuNP + MWCNT composite electrode (CNT drop-cast then AuNP electrodeposition) | Combined 10–50x effective surface area; brings 1 ng/mL into detectable range | +8% |
+| MWCNT drop-cast layer | 2–5x surface area; improved electron transfer kinetics | +4% |
 | oPD polymer with extended overoxidation (5 cycles to +1100 mV) | Tighter cavities for testosterone's smaller frame (288 Da vs cortisol 362 Da); carboxyl groups add H-bond selectivity | +5% |
 | SWV measurement mode (AD5941 supports this natively) | Best S/N of all pulsed techniques; 3–5x improvement over chronoamperometry at low concentrations | +4% |
 | Redox probe amplification ([Fe(CN)6] 5 mM) | Doubles the measurable signal change from cavity blockage | +3% |
@@ -155,13 +172,19 @@ DHEA-S is the most abundant circulating steroid and a direct adrenal output mark
 | Thiol SAM base layer (11-mercaptoundecanoic acid, 2hr incubation before polymerization) | Ordered base layer improves polymer adhesion and uniformity; reduces electrode-to-electrode variability | +2% |
 | Duplicate WE pair (2x MIP + 2x NIP for testosterone, averaging) | Halves random noise via averaging; requires 6-pad electrode or second PCB | +1% |
 
-**Final confidence with all enhancements: 68–95%**
+**Final confidence with all enhancements: 60–88%**
+
+> **Patent note — two issues in Phase 3:**
+> 1. **US9846137 Claim 1** (AuNP + MIP + steroid): Avoided by using CNT-only instead of AuNP. Reduces the +8% AuNP gain to +4% CNT gain.
+> 2. **US9846137 Claim 3** (electropolymerization fabrication for testosterone): Testosterone IS in the enumerated steroid list. However, this claim has the same prior art invalidity vulnerability as Claims 6-7 — electropolymerized testosterone MIP sensors were published before the 2016 filing date. The attorney opinion letter should cover this claim alongside Claims 6-7. If risk-averse, an alternative is non-electrochemical MIP fabrication (UV-initiated polymerization + drop-cast), which avoids the "electro-polymerization" claim element.
+>
+> See `docs/patent-landscape-analysis.md` for full analysis.
 
 ### Key Risk
-Concentration is right at LOD boundary (1–10 ng/mL). Needs full signal amplification stack. Literature shows MIP-testosterone on AuNP/CNT achieving ~0.5 ng/mL LOD, but translating lab results to wearable is the challenge.
+Concentration is right at LOD boundary (1–10 ng/mL). Without AuNP, the enhancement stack is shallower — CNT + SWV + oPD + redox probe must compensate. Literature shows CNT-enhanced MIP testosterone sensors achieving ~0.2 ng/mL LOD, sufficient for the 1–10 ng/mL sweat range.
 
 ### Product Value
-Massive consumer demand — fitness optimization, TRT monitoring, athletic performance. Combined with the stress panel (cortisol/cortisone/DHEA-S), testosterone adds a recovery and anabolic/catabolic balance dimension. The cortisol:testosterone ratio is a well-established overtraining marker in sports science.
+Massive consumer demand — fitness optimization, TRT monitoring, athletic performance. Combined with the stress panel (cortisol/cortisone/DHEA-S), testosterone adds a recovery and anabolic/catabolic balance dimension. The cortisol:testosterone ratio is a well-established overtraining marker in sports science. Market as "performance panel" or "hormonal balance" — avoid "stress" labeling if testosterone is included (WO2016197085 Claim 22 lists testosterone).
 
 ---
 
@@ -171,26 +194,46 @@ Massive consumer demand — fitness optimization, TRT monitoring, athletic perfo
 
 ### Sensing Changes
 - Aptamer recognition instead of MIP (published 76-mer progesterone aptamer, thiol-terminated on gold)
-- EIS measurement mode (AD5941 built-in impedance engine)
-- AuNP + CNT composite electrode
+- Label-free EIS measurement mode (AD5941 built-in impedance engine) — avoids Plaxco patent
+- CNT composite electrode (no AuNP)
 - Thiol SAM + MCH backfill
 
-### Enhancement Stack
+### Enhancement Stack (Patent-Adjusted — No AuNP, No MB Redox Tag)
+
+**Option A: Label-free EIS approach (available now, avoids Plaxco patent)**
 
 | Improvement | Effect | Confidence Gain |
 |---|---|---|
 | Aptamer recognition instead of MIP (published 76-mer progesterone aptamer, thiol-terminated on gold) | Aptamers have Kd in nM range; conformational change on binding is detectable via EIS; avoids MIP cavity-size problem for 314 Da molecule | +10% |
-| AuNP + CNT composite electrode (same as Phase 3) | Increases aptamer loading density and electron transfer kinetics | +5% |
+| MWCNT drop-cast layer | Increases aptamer loading density and electron transfer kinetics | +3% |
 | EIS measurement mode (AD5941 built-in impedance engine) | Measures Rct change from aptamer folding; extremely sensitive to surface binding events without needing redox probe | +5% |
 | Thiol SAM + MCH backfill (6-mercaptohexanol blocks bare gold, forces aptamers upright) | Critical for aptamer sensors — prevents non-specific adsorption and improves orientation uniformity | +4% |
-| Redox-tagged aptamer (methylene blue covalently attached to aptamer distal end) | Binding changes MB-to-electrode distance; gives faradaic signal directly proportional to analyte; gold standard for electrochemical aptamer sensors | +5% |
 | Anti-fouling PEG co-SAM (short PEG-thiol mixed with aptamer-thiol) | Resists protein fouling in complex sweat matrix; extends sensor lifetime | +2% |
 | Duplicate WE pair with averaging | Noise reduction | +1% |
 
-**Final confidence with all enhancements: 62–95%**
+**Final confidence with Option A (label-free EIS): 55–88%**
+
+**Option B: MB-tagged aptamer with SWV (available after Plaxco patent expiry ~2026-2028)**
+
+All Option A enhancements plus:
+
+| Improvement | Effect | Confidence Gain |
+|---|---|---|
+| Redox-tagged aptamer (methylene blue covalently attached to aptamer distal end) | Binding changes MB-to-electrode distance; gives faradaic signal directly proportional to analyte; gold standard for electrochemical aptamer sensors | +5% |
+| SWV interrogation instead of EIS | SWV directly measures MB redox peak height change; proven technique for E-AB sensors | +2% |
+
+**Final confidence with Option B (post-Plaxco expiry): 62–95%**
+
+> **Patent note — two issues in Phase 4a:**
+> 1. **US8,003,374 (Plaxco/Heeger):** Foundational E-AB patent covers MB-tagged aptamer on gold with conformational change detection. Filed March 2006, base expiry ~March 2026. Option A avoids this by using label-free EIS (no redox tag). Option B becomes available after patent expiry.
+> 2. **US20240325001 (Gao/Caltech):** Pending application for aptamer wearable female hormone monitoring with multi-factor calibration. Monitor prosecution — if granted with broad claims, may require design-around for calibration approach.
+>
+> **US9846137 does NOT apply** — aptamer sensors are not "conductive polymer matrix film" MIP. All FIU claims require MIP.
+>
+> See `docs/patent-landscape-analysis.md` for full analysis.
 
 ### Key Risk
-Transition from MIP to aptamer chemistry — different functionalization protocol, different failure modes, different shelf-life characteristics. The aptamer route is well-published but new to this platform.
+Transition from MIP to aptamer chemistry — different functionalization protocol, different failure modes, different shelf-life characteristics. Label-free EIS (Option A) is less sensitive than MB-tagged SWV (Option B) at low concentrations, but viable for progesterone at 0.5–5 ng/mL.
 
 ### Product Value
 Progesterone tracking enables menstrual cycle phase identification and fertility window detection. Combined with cortisol, provides insight into how stress affects reproductive hormones — a highly differentiated product for women's health.
@@ -203,49 +246,77 @@ Progesterone tracking enables menstrual cycle phase identification and fertility
 
 ### Sensing Changes
 - Aptamer recognition (published 75-mer E2 aptamer, thiol-terminated, well-validated in literature)
-- Redox-tagged aptamer (methylene blue label) — essential at this concentration range
-- AuNP + CNT + thiol SAM + MCH backfill (full enhancement stack)
-- SWV interrogation (better than EIS for redox-tagged aptamers)
+- Label-free EIS or MB-tagged SWV depending on Plaxco patent status (see patent note)
+- CNT + thiol SAM + MCH backfill (no AuNP)
 - Evaporative preconcentration chamber
 
-### Enhancement Stack
+### Enhancement Stack (Patent-Adjusted — No AuNP, MB Tag Depends on Plaxco Expiry)
+
+**Option A: Label-free EIS + preconcentration (available now)**
 
 | Improvement | Effect | Confidence Gain |
 |---|---|---|
 | Aptamer recognition (published 75-mer E2 aptamer, thiol-terminated, well-validated in literature) | Best-available recognition element for E2 at sub-ng/mL; multiple groups have demonstrated pg/mL detection | +12% |
-| Redox-tagged aptamer (methylene blue label) | Essential at this concentration range — direct faradaic signal from conformational change; published LODs of 0.005–0.05 ng/mL | +8% |
-| AuNP + CNT + thiol SAM + MCH backfill (full enhancement stack) | Maximizes aptamer loading, orientation, and electron transfer | +6% |
-| EIS or SWV interrogation (SWV better for redox-tagged aptamers) | SWV directly measures MB redox peak height change; proven technique for E-AB sensors | +5% |
-| Microfluidic preconcentration chamber (passive evaporative concentrator over WE) | 5–10x concentration factor by allowing sweat to partially evaporate before reaching electrode; adds a silicone gasket + hydrophilic mesh to sensor module | +6% |
+| MWCNT drop-cast layer | Increases aptamer loading density and electron transfer kinetics | +3% |
+| EIS measurement mode | Measures Rct change from aptamer folding; sensitive to surface binding events | +4% |
+| Thiol SAM + MCH backfill | Forces aptamers upright; prevents non-specific adsorption | +4% |
+| Evaporative preconcentration chamber (passive concentrator over WE) | 5–10x concentration factor by allowing sweat to partially evaporate before reaching electrode; adds silicone gasket + hydrophilic mesh to sensor module | +6% |
 | Anti-fouling PEG co-SAM | Critical for long-wear stability at these trace levels | +2% |
 | Extended measurement time (300s instead of 60s, signal averaging) | Improves S/N at ultra-low concentrations; AD5941 supports arbitrary timing | +2% |
 | Larger WE (12 mm diameter) + duplicate pair | More aptamer sites + noise averaging | +2% |
 
-**Final confidence with all enhancements: 53–83%**
+**Final confidence with Option A (label-free EIS): 48–78%**
+
+**Option B: MB-tagged SWV + preconcentration (after Plaxco expiry ~2026-2028)**
+
+All Option A enhancements plus:
+
+| Improvement | Effect | Confidence Gain |
+|---|---|---|
+| Redox-tagged aptamer (methylene blue label) | Direct faradaic signal from conformational change; published LODs of 0.005–0.05 ng/mL | +8% |
+| SWV interrogation instead of EIS | SWV directly measures MB redox peak height change; proven E-AB technique | +3% |
+
+**Final confidence with Option B (post-Plaxco expiry): 53–83%**
+
+> **Patent note — three issues in Phase 4b:**
+> 1. **US8,003,374 (Plaxco/Heeger):** Same E-AB blocking as Phase 4a. Option A (label-free EIS) available now; Option B after expiry.
+> 2. **US20240325001 (Gao/Caltech):** Pending — aptamer wearable for female hormones. Estradiol is a primary target. Monitor prosecution.
+> 3. **WO2016197085A1 Claim 22 (Eccrine/Epicore):** Lists "estrogen" in the multi-analyte stress method claim. If cortisol + estradiol is marketed as stress assessment, this claim applies. Market as "reproductive health" instead.
+>
+> **US9846137 does NOT apply** — aptamer sensors are not MIP.
+> **Evaporative preconcentration chamber has NO patent conflicts** — no existing patent covers passive evaporative concentration in a wearable enclosure.
+>
+> See `docs/patent-landscape-analysis.md` for full analysis.
 
 ### Key Risk
-Sweat estradiol concentration (0.05–0.5 ng/mL) is 100x below cortisol. Even with full enhancement stack, this is pushing the platform to its limits. The evaporative preconcentration chamber is the make-or-break element — it's mechanically simple but needs validation that concentration is uniform and reproducible.
+Sweat estradiol concentration (0.05–0.5 ng/mL) is 100x below cortisol. Label-free EIS (Option A) is less sensitive than MB-tagged SWV (Option B), making the preconcentration chamber critical in Option A. The chamber is mechanically simple but needs validation that concentration is uniform and reproducible.
 
 ### Product Value
-Estradiol monitoring enables menopause transition tracking, HRT dose optimization, and fertility support. Combined with progesterone (Phase 4a), creates a comprehensive reproductive hormone panel. This is a large underserved market with no wearable solution.
+Estradiol monitoring enables menopause transition tracking, HRT dose optimization, and fertility support. Combined with progesterone (Phase 4a), creates a comprehensive reproductive hormone panel. This is a large underserved market with no wearable solution. Market as "reproductive health" or "hormonal wellness" — avoid "stress" labeling.
 
 ---
 
-## Phase Summary
+## Phase Summary (Patent-Adjusted)
 
-| Phase | Analytes | Panel Name | Starting Confidence | With All Enhancements | Key Enabler | Market Application |
-|---|---|---|---|---|---|---|
-| 1 | Cortisol + Cortisone | Corticosteroid Panel | 90–95% | **94–98%** | oPD polymer + cross-reactivity calibration | Stress monitoring, HPA axis insight |
-| 2 | + DHEA-S | Adrenal Stress Panel | 80–90% | **90–97%** | AuNP + DPV mode + redox probe | Chronic stress, adrenal fatigue |
-| 3 | + Testosterone | Performance Panel | 40–70% | **68–95%** | AuNP/CNT composite + SWV + larger WE | Fitness, TRT, overtraining |
-| 4a | + Progesterone | Reproductive Health Panel | 30–65% | **62–95%** | Aptamer with MB redox tag + EIS | Fertility, cycle tracking |
-| 4b | + Estradiol | Women's Health Panel | 10–40% | **53–83%** | Aptamer + MB tag + evaporative preconcentration | Menopause, HRT, fertility |
+| Phase | Analytes | Panel Name | Original Confidence | Patent-Adjusted Confidence | Key Enabler | Patent Constraint | Market Positioning |
+|---|---|---|---|---|---|---|---|
+| 1 | Cortisol + Cortisone | Corticosteroid Panel | 94–98% | **94–98%** | oPD polymer + cross-reactivity calibration | None | Cortisol monitoring, HPA axis insight |
+| 2 | + DHEA-S | Adrenal Health Panel | 90–97% | **85–93%** | CNT + DPV mode + redox probe | US9846137 Cl.1 → no AuNP | Hormonal health, adrenal balance |
+| 3 | + Testosterone | Performance Panel | 68–95% | **60–88%** | CNT + SWV + larger WE | US9846137 Cl.1+3 → no AuNP, invalidity defense | Fitness, TRT, hormonal balance |
+| 4a | + Progesterone | Reproductive Health Panel | 62–95% | **55–88%** (EIS) / **62–95%** (post-expiry) | Label-free EIS aptamer or MB-tagged post-2026 | Plaxco US8003374 → no MB tag until expiry | Fertility, cycle tracking |
+| 4b | + Estradiol | Women's Health Panel | 53–83% | **48–78%** (EIS) / **53–83%** (post-expiry) | EIS aptamer + preconcentration or MB post-2026 | Plaxco + Gao pending + Eccrine Cl.22 → no MB, no "stress" label | Reproductive health, HRT |
+
+> **Key design changes from patent analysis:**
+> - All phases: AuNP electrodeposition replaced with CNT-only (avoids US9846137 Claim 1)
+> - Phase 4a/4b: MB redox tag deferred until Plaxco patent expiry (~2026); label-free EIS as interim approach
+> - All phases: "Stress" marketing language avoided (mitigates WO2016197085 Claims 20-22)
+> - Full patent analysis: `docs/patent-landscape-analysis.md`
 
 ---
 
-## Electrode Architecture Evolution
+## Electrode Architecture Evolution (Patent-Adjusted)
 
-### Phase 1–2: MIP-Only (Current Architecture Extended)
+### Phase 1: MIP-Only (Current Architecture)
 ```
 Gold substrate
   └── oPD MIP layer (analyte-specific template)
@@ -253,24 +324,40 @@ Gold substrate
 ```
 Electrodes per analyte: 1x MIP + 1x NIP (differential pair)
 
-### Phase 3: Enhanced MIP
+### Phase 2: MIP + CNT Enhancement
 ```
 Gold substrate
   └── MWCNT drop-cast layer
-        └── AuNP electrodeposition
-              └── Thiol SAM base layer
-                    └── oPD MIP layer (overoxidized)
-                          └── Nafion membrane
+        └── oPD MIP layer (analyte-specific template)
+              └── Nafion anti-fouling membrane
 ```
+Note: No AuNP — avoids US9846137 Claim 1. CNT provides 2-5x surface area improvement.
 
-### Phase 4a–4b: Aptamer-Based
+### Phase 3: Enhanced MIP + CNT (Patent-Adjusted — No AuNP)
 ```
 Gold substrate
   └── MWCNT drop-cast layer
-        └── AuNP electrodeposition
-              └── Thiol SAM + MB-labeled aptamer + MCH backfill + PEG co-SAM
+        └── Thiol SAM base layer
+              └── oPD MIP layer (overoxidized)
+                    └── Nafion membrane
 ```
-No NIP needed — aptamer sensors use a single electrode with signal-on/signal-off MB redox measurement.
+Note: Original design included AuNP electrodeposition between CNT and SAM layers. Removed to avoid US9846137 Claim 1. CNT + thiol SAM + overoxidation provide adequate enhancement for testosterone detection range.
+
+### Phase 4a–4b Option A: Label-Free Aptamer (Available Now)
+```
+Gold substrate
+  └── MWCNT drop-cast layer
+        └── Thiol SAM + unlabeled aptamer + MCH backfill + PEG co-SAM
+```
+Detection via EIS (charge transfer resistance change from aptamer folding). No redox label — avoids Plaxco US8,003,374.
+
+### Phase 4a–4b Option B: MB-Tagged Aptamer (After Plaxco Expiry ~2026-2028)
+```
+Gold substrate
+  └── MWCNT drop-cast layer
+        └── Thiol SAM + MB-labeled aptamer + MCH backfill + PEG co-SAM
+```
+Detection via SWV (MB redox peak height change). Higher sensitivity than Option A but requires Plaxco patent to have expired. No NIP needed — aptamer sensors use a single electrode with signal-on/signal-off measurement.
 
 ---
 
@@ -288,27 +375,31 @@ Note: AD5941 has a built-in multiplexer supporting up to 4 WE channels. Phase 3+
 
 ---
 
-## Bill of Materials Impact (Per Electrode, Incremental)
+## Bill of Materials Impact (Per Electrode, Incremental — Patent-Adjusted)
 
-| Phase | Added Materials | Added Cost per Electrode |
-|---|---|---|
-| 1 | Cortisone template (Sigma), oPD monomer | +$1–2 |
-| 2 | DHEA-S template, HAuCl4 for AuNP, K3[Fe(CN)6] redox probe | +$2–3 |
-| 3 | Testosterone template, MWCNT suspension, 11-MUA thiol | +$3–5 |
-| 4a | Progesterone aptamer (thiol-MB labeled, custom synthesis) | +$8–15 |
-| 4b | Estradiol aptamer (thiol-MB labeled), PEG-thiol, preconcentration gasket | +$10–20 |
+| Phase | Added Materials | Added Cost per Electrode | Patent Note |
+|---|---|---|---|
+| 1 | Cortisone template (Sigma), oPD monomer | +$1–2 | — |
+| 2 | DHEA-S template, MWCNT suspension, K3[Fe(CN)6] redox probe | +$2–3 | HAuCl4 removed (was +$0.50) — avoids US9846137 |
+| 3 | Testosterone template, MWCNT suspension, 11-MUA thiol | +$3–5 | No AuNP cost |
+| 4a (Option A) | Progesterone aptamer (thiol-terminated, unlabeled), MCH, PEG-thiol | +$5–10 | No MB label — avoids Plaxco; cheaper than labeled aptamer |
+| 4a (Option B) | Progesterone aptamer (thiol-MB labeled, custom synthesis) | +$8–15 | Requires Plaxco patent expiry |
+| 4b (Option A) | Estradiol aptamer (thiol-terminated, unlabeled), PEG-thiol, preconcentration gasket | +$7–12 | No MB label |
+| 4b (Option B) | Estradiol aptamer (thiol-MB labeled), PEG-thiol, preconcentration gasket | +$10–20 | Requires Plaxco patent expiry |
 
 ---
 
-## Firmware Implications
+## Firmware Implications (Patent-Adjusted)
 
-| Phase | AD5941 Mode Changes | nRF52832 Changes |
-|---|---|---|
-| 1 | None — same chronoamperometry | Additional MIP/NIP channel in measurement cycle |
-| 2 | Add DPV mode for DHEA-S channel | DPV parameter config; updated calibration pipeline |
-| 3 | Add SWV mode; add mux control | External mux GPIO driver; SWV signal processing; cross-reactivity matrix compensation |
-| 4a | Add EIS mode | EIS impedance extraction; aptamer signal processing (different from MIP differential) |
-| 4b | Modify SWV for MB redox peak tracking; extended measurement timing (300s) | MB peak height extraction; evaporative preconcentration timing control |
+| Phase | AD5941 Mode Changes | nRF52832 Changes | Patent Note |
+|---|---|---|---|
+| 1 | None — same chronoamperometry | Additional MIP/NIP channel in measurement cycle | — |
+| 2 | Add DPV mode for DHEA-S channel | DPV parameter config; updated calibration pipeline | — |
+| 3 | Add SWV mode; add mux control | External mux GPIO driver; SWV signal processing; cross-reactivity matrix compensation | — |
+| 4a (Option A) | Add EIS mode | EIS impedance extraction (Rct measurement); aptamer signal processing (different from MIP differential) | Label-free EIS avoids Plaxco |
+| 4a (Option B) | Add SWV for MB redox peak tracking | MB peak height extraction via SWV | Requires Plaxco expiry |
+| 4b (Option A) | EIS mode + extended measurement timing (300s) | EIS extraction + preconcentration timing control | Label-free EIS avoids Plaxco |
+| 4b (Option B) | SWV for MB redox peak tracking + extended timing (300s) | MB peak height extraction + preconcentration timing control | Requires Plaxco expiry |
 
 All measurement modes (chronoamperometry, DPV, SWV, EIS) are natively supported by the AD5941 — changes are firmware configuration, not hardware.
 
