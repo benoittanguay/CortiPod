@@ -581,16 +581,21 @@ cortipod-firmware/
     4. Read SHT40 (humidity)
     5. Read GSR (skin conductance)
     6. Run AD5941 chronoamperometry sequence (60 seconds)
-    7. Extract peak current
+    7. Extract peak current and baseline current
     8. Package all readings into BLE notification:
        {
          timestamp: uint32 (seconds since boot),
-         cortisol_raw_ua: float32,
+         cortisol_peak_ua: float32,
+         cortisol_baseline_ua: float32,
          temperature_c: float32,
          humidity_pct: float32,
          gsr_us: float32,
          contact_quality: uint8
        }
+       Note: both peak and baseline are sent so the app can compute
+       delta_I and apply the full compensation pipeline (temperature,
+       humidity, sweat rate, dilution, lag estimation). All signal
+       processing happens on the phone, not the firmware.
     9. Transmit via BLE notify
     10. Go back to sleep
   ```
@@ -799,61 +804,207 @@ iOS app that connects to the CortiPod via BLE, receives raw sensor data, applies
 
 ### Task 7.3: Sensor Fusion + Calibration Engine
 
-- [ ] **Step 1: Implement temperature compensation**
+The signal processing pipeline compensates for environmental factors, estimates sweat rate,
+applies calibration, and estimates the transport lag between blood and sweat cortisol.
+See `docs/calibration-guide.md` for the full 8-step pipeline and `docs/sweat-cortisol-correlation-factors.md`
+for the scientific basis of each correction.
+
+- [ ] **Step 1: Implement temperature + humidity compensation**
   ```swift
   struct SensorFusion {
-      // Temperature coefficient: measured during Phase 2 calibration
-      // Typically ~2-3% per degree C
+      // Temperature coefficient: ~2.5% per degree C (calibrate empirically)
       static func temperatureCompensate(rawUA: Float, tempC: Float, refTempC: Float = 25.0) -> Float {
-          let tempCoeff: Float = 0.025  // 2.5% per degree — calibrate this empirically
+          let tempCoeff: Float = 0.025
           let correction = 1.0 + tempCoeff * (tempC - refTempC)
           return rawUA / correction
       }
       
-      // GSR-based sweat rate normalization
-      static func sweatNormalize(rawUA: Float, gsrUS: Float, refGSR: Float) -> Float {
-          // Higher GSR = more sweat = more dilute cortisol
-          // Scale factor determined empirically during calibration
-          return rawUA * (gsrUS / refGSR)
+      // Humidity compensation: evaporative concentration correction
+      static func humidityCompensate(compensatedUA: Float, humidityPct: Float, refRH: Float = 50.0) -> Float {
+          let rhCoeff: Float = 0.005  // 0.5% per 1% RH deviation
+          let correction = 1.0 + rhCoeff * (refRH - humidityPct)
+          return compensatedUA * correction
       }
   }
   ```
 
-- [ ] **Step 2: Implement calibration curve**
+- [ ] **Step 2: Implement sweat rate estimation + dilution correction**
+  ```swift
+  struct SweatRateModel {
+      // Physics-based evaporative model using Antoine equation for vapor pressure
+      // Corrects the GSR-based sweat rate proxy for evaporation losses
+      //
+      // Why: In dry air, sweat evaporates before reaching the sensor, concentrating
+      // cortisol and inflating the reading. This model estimates how much sweat
+      // actually reaches the electrode surface vs how much evaporates.
+      //
+      // Reference: docs/sweat-cortisol-correlation-factors.md, Factor 3
+      
+      static let kEvap: Float = 0.4       // Empirical evaporation coefficient (calibrate on-body)
+      static let pRef: Float = 3000.0     // Reference vapor pressure deficit at 50% RH, 25°C (Pa)
+      
+      // Estimate sweat rate from GSR + environmental sensors
+      static func estimateSweatRate(gsrUS: Float, refGSR: Float,
+                                     skinTempC: Float, airTempC: Float,
+                                     humidityPct: Float) -> Float {
+          // Saturated vapor pressure at skin temperature (Antoine equation, Pa)
+          let pSkin = 610.78 * exp(17.27 * skinTempC / (skinTempC + 237.3))
+          
+          // Ambient vapor pressure
+          let pAmbient = (humidityPct / 100.0) * 610.78 * exp(17.27 * airTempC / (airTempC + 237.3))
+          
+          // Evaporative factor: how much faster sweat evaporates vs reference conditions
+          let evapFactor = (pSkin - pAmbient) / pRef
+          
+          // GSR ratio gives raw sweat production proxy
+          let gsrRatio = gsrUS / refGSR
+          
+          // Correct for evaporation: higher evap = less sweat reaching sensor
+          let sweatRate = gsrRatio / (1.0 + kEvap * evapFactor)
+          
+          return sweatRate
+      }
+      
+      // Apply dilution correction to compensated signal
+      static func dilutionCorrect(compensatedUA: Float, sweatRate: Float,
+                                   refSweatRate: Float = 0.7) -> Float {
+          return compensatedUA * (sweatRate / refSweatRate)
+      }
+  }
+  ```
+
+- [ ] **Step 3: Implement calibration curve**
   ```swift
   struct CalibrationEngine {
-      // Coefficients from Phase 2 calibration curve (log-linear fit)
-      var slope: Float      // from calibration
-      var intercept: Float  // from calibration
+      var slope: Float      // from personal calibration
+      var intercept: Float  // from personal calibration
       
       func rawToConcentration(compensatedUA: Float) -> Float {
-          // log-linear model: log(concentration) = slope * current + intercept
           let logConc = slope * compensatedUA + intercept
           return pow(10, logConc)  // ng/mL
       }
   }
   ```
 
-- [ ] **Step 3: Implement confidence scoring**
+- [ ] **Step 4: Implement transport lag estimation**
+  ```swift
+  struct TransportLagModel {
+      // Estimates the delay between a blood cortisol change and its appearance
+      // in sweat at the sensor surface. Depends on sweat rate (higher flow =
+      // shorter lag through the eccrine duct).
+      //
+      // The lag is used to timestamp readings with "estimated blood time" so the
+      // app can align sweat cortisol trends with actual systemic cortisol timing.
+      //
+      // Lookup table — to be refined during on-body validation (Phase 8).
+      // Based on published transport kinetics:
+      //   - High sweat: 5-8 min (fast ductal flow)
+      //   - Moderate: 8-15 min (typical passive wear)
+      //   - Low: 15-25 min (diffusion-dominated)
+      //
+      // Reference: Sensors 2025, 25(15), 4551 — kinetic modeling achieved r=0.95
+      //            docs/sweat-cortisol-correlation-factors.md, Factor 2
+      
+      static func estimateLagMinutes(sweatRate: Float) -> Float {
+          if sweatRate > 1.0 {
+              return 5.0    // High sweat (exercise, hot environment)
+          } else if sweatRate > 0.5 {
+              return 8.0    // Moderate-high
+          } else if sweatRate > 0.3 {
+              return 12.0   // Moderate (typical indoor passive wear)
+          } else if sweatRate > 0.1 {
+              return 18.0   // Low sweat
+          } else {
+              return 25.0   // Minimal sweat — flag as low confidence
+          }
+      }
+      
+      static func estimatedBloodTime(measurementTime: Date, sweatRate: Float) -> Date {
+          let lagMinutes = estimateLagMinutes(sweatRate: sweatRate)
+          return measurementTime.addingTimeInterval(TimeInterval(-lagMinutes * 60))
+      }
+  }
+  ```
+
+- [ ] **Step 5: Implement confidence scoring**
   ```swift
   struct ConfidenceScore {
-      static func calculate(reading: SensorReading) -> Float {
+      static func calculate(reading: SensorReading, lagMinutes: Float) -> Float {
           var score: Float = 1.0
           
           // Penalize poor skin contact
           score *= Float(reading.contactQuality) / 100.0
           
-          // Penalize extreme temperatures (sensor less reliable)
+          // Penalize extreme temperatures
           if reading.temperatureC < 20 || reading.temperatureC > 38 {
               score *= 0.7
           }
           
-          // Penalize very low GSR (may indicate dry skin / no sweat)
+          // Penalize very low GSR (no sweat detected)
           if reading.gsrUS < 0.5 {
               score *= 0.5
           }
           
+          // Penalize high transport lag (stale measurement)
+          if lagMinutes > 20 {
+              score *= 0.6
+          } else if lagMinutes > 15 {
+              score *= 0.8
+          }
+          
           return score  // 0.0 to 1.0
+      }
+  }
+  ```
+
+- [ ] **Step 6: Wire up the full pipeline**
+  ```swift
+  struct CortisolProcessor {
+      let calibration: CalibrationEngine
+      let refGSR: Float       // From personal calibration session
+      let refSweatRate: Float  // From personal calibration session
+      
+      func process(reading: SensorReading) -> CalibratedReading {
+          // Step 1-2: Extract peak current, calculate delta
+          let deltaI = reading.baselineUA - reading.peakUA
+          
+          // Step 3: Temperature compensation
+          let tempComp = SensorFusion.temperatureCompensate(
+              rawUA: deltaI, tempC: reading.temperatureC)
+          
+          // Step 4: Humidity compensation
+          let humComp = SensorFusion.humidityCompensate(
+              compensatedUA: tempComp, humidityPct: reading.humidityPct)
+          
+          // Step 5: Sweat rate estimation + dilution correction
+          let sweatRate = SweatRateModel.estimateSweatRate(
+              gsrUS: reading.gsrUS, refGSR: refGSR,
+              skinTempC: reading.temperatureC + 0.5,  // Approximate skin temp
+              airTempC: reading.temperatureC,
+              humidityPct: reading.humidityPct)
+          let dilutionComp = SweatRateModel.dilutionCorrect(
+              compensatedUA: humComp, sweatRate: sweatRate, refSweatRate: refSweatRate)
+          
+          // Step 6: Calibration curve → ng/mL
+          let concentration = calibration.rawToConcentration(compensatedUA: dilutionComp)
+          
+          // Step 7: Transport lag estimation
+          let lagMinutes = TransportLagModel.estimateLagMinutes(sweatRate: sweatRate)
+          let bloodTime = TransportLagModel.estimatedBloodTime(
+              measurementTime: reading.timestamp, sweatRate: sweatRate)
+          
+          // Step 8: Confidence scoring
+          let confidence = ConfidenceScore.calculate(
+              reading: reading, lagMinutes: lagMinutes)
+          
+          return CalibratedReading(
+              timestamp: reading.timestamp,
+              estimatedBloodTime: bloodTime,
+              concentrationNgMl: concentration,
+              transportLagMinutes: lagMinutes,
+              sweatRate: sweatRate,
+              confidence: confidence
+          )
       }
   }
   ```
@@ -862,14 +1013,18 @@ iOS app that connects to the CortiPod via BLE, receives raw sensor data, applies
 
 - [ ] **Step 1: Dashboard view**
   - Large current cortisol reading (ng/mL) with confidence indicator
-  - Mini trend chart (last 4 hours)
+  - Transport lag indicator: "~10 min ago" (shows estimated blood time offset)
+  - Sweat rate indicator: low / moderate / high (from SweatRateModel)
+  - Mini trend chart (last 4 hours) — X axis uses estimated_blood_time, not measurement_time
   - Status bar: connection, battery, sensor age
 
 - [ ] **Step 2: History view**
   - Full 24-hour chart using SwiftUI Charts
+  - X axis: estimated blood time (lag-corrected), with option to toggle to raw measurement time
   - Overlay: expected circadian curve (reference)
   - 7-day and 30-day views with daily averages
   - Highlight stress events (rapid rises)
+  - Grey out low-confidence readings (lag > 20 min or GSR near zero)
 
 - [ ] **Step 3: Calibration view**
   - Input field for known cortisol value (from saliva test kit)
@@ -932,6 +1087,59 @@ Validate the complete system on a real human subject (yourself).
 - [ ] **Step 2: Compare day 1 vs day 5 readings**
   - Calibration should hold
   - If baseline drifts >20%, sensor strip needs replacement
+
+### Task 8.3: Transport Lag Calibration
+
+Validates and refines the lag lookup table in `TransportLagModel`. This must be done on-body
+because the lag depends on individual physiology and can't be measured on the bench.
+
+See `docs/sweat-cortisol-correlation-factors.md` for the scientific basis.
+
+- [ ] **Step 1: Simultaneous sweat + saliva sampling**
+  ```
+  Protocol:
+  1. Wear CortiPod on wrist, recording every 15 minutes
+  2. Take saliva samples at 15-minute intervals for 4 hours:
+     - 2 morning samples (within 60 min of waking, captures CAR)
+     - 4 midday samples (12:00-14:00)
+     - 2 afternoon samples (16:00-17:00)
+  3. Record GSR/humidity/temperature at each saliva sample time
+  4. Run saliva samples through ELISA or LFD kit (same day if possible)
+  
+  You need 8+ paired (sweat, saliva) data points with timestamps.
+  ```
+
+- [ ] **Step 2: Cross-correlate with lag offset**
+  ```
+  For each sweat rate regime (low / moderate / high):
+  1. Gather all (sweat, saliva) pairs where GSR falls in that regime
+  2. For lag_offset in [0, 5, 10, 15, 20, 25] minutes:
+     a. Shift sweat timestamps backward by lag_offset
+     b. Interpolate saliva values to match shifted sweat times
+     c. Compute Pearson r between shifted sweat and saliva
+  3. The lag_offset that maximizes r is the empirical lag for that regime
+  
+  Expected results:
+    High sweat (exercise):     optimal lag ~5-8 min
+    Moderate (indoor passive): optimal lag ~10-15 min
+    Low sweat (cool/dry):      optimal lag ~18-25 min
+  ```
+
+- [ ] **Step 3: Update lag lookup table**
+  - Replace the default values in `TransportLagModel` with empirical values
+  - If the lookup table is a poor fit, consider a continuous model:
+    `lag_minutes = a / sweat_rate + b` (hyperbolic, fit a and b from data)
+  - Document the fitted parameters in `docs/sweat-cortisol-correlation-factors.md`
+
+- [ ] **Step 4: Validate correlation improvement**
+  ```
+  Compare within-subject r with and without lag correction:
+  - r_no_lag:   correlation using raw measurement timestamps
+  - r_with_lag: correlation using estimated_blood_time
+  
+  Target: r_with_lag > r_no_lag by at least 0.05
+  Overall target: within-subject r > 0.75
+  ```
 
 ---
 

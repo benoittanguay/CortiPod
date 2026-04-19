@@ -269,31 +269,65 @@ Step 4: Humidity compensation
         │  Adjust ±0.5% per 1% RH deviation
         │
         ▼
-Step 5: Sweat rate normalization (via GSR)
-        │  Delta_I_final = Delta_I_comp2 × (GSR_current / GSR_reference)
+Step 5: Sweat rate normalization (via GSR + evaporative model)
+        │  sweat_rate = estimate_sweat_rate(GSR, RH%, T_skin)
+        │  dilution_factor = sweat_rate / sweat_rate_reference
+        │  Delta_I_comp3 = Delta_I_comp2 × dilution_factor
         │
         │  Why: more sweat = more dilute cortisol = weaker signal.
-        │  GSR_reference is your average GSR during lab calibration.
-        │  If current GSR is 2x reference, sweat is 2x more abundant,
-        │  so cortisol is ~2x more dilute — scale the signal up.
+        │  Uses GSR as primary sweat rate proxy, refined by an
+        │  evaporative model that accounts for humidity and skin
+        │  temperature (sweat evaporates faster in dry/warm air,
+        │  concentrating the cortisol — which inflates the reading).
+        │
+        │  Evaporative correction:
+        │    p_skin = 610.78 × exp(17.27 × T_skin / (T_skin + 237.3))
+        │    p_ambient = (RH/100) × 610.78 × exp(17.27 × T_air / (T_air + 237.3))
+        │    evap_factor = (p_skin - p_ambient) / p_ref
+        │    sweat_rate = GSR_proxy / (1 + k_evap × evap_factor)
+        │  where k_evap is calibrated empirically (~0.3-0.5).
         │
         ▼
 Step 6: Apply lab calibration curve
-        │  Conc = 10 ^ ((Delta_I_final - intercept) / slope)
+        │  Conc = 10 ^ ((Delta_I_comp3 - intercept) / slope)
         │
         │  Uses the slope + intercept from lab calibration
         │
         ▼
-Step 7: Confidence scoring
+Step 7: Transport lag estimation
+        │  lag_minutes = estimate_lag(sweat_rate)
+        │  estimated_blood_time = measurement_time - lag_minutes
+        │
+        │  Why: cortisol takes 5-20 minutes to travel from blood
+        │  through ISF and the eccrine gland to the skin surface.
+        │  The lag depends on sweat rate — higher sweat = faster
+        │  transport = shorter lag.
+        │
+        │  Lookup table (calibrated during on-body validation):
+        │    sweat_rate > 1.0 mg/cm2/min  → lag = 5 min
+        │    sweat_rate 0.3-1.0           → lag = 10 min
+        │    sweat_rate 0.1-0.3           → lag = 18 min
+        │    sweat_rate < 0.1             → lag = 25 min (low confidence)
+        │
+        │  The app timestamps each reading with estimated_blood_time
+        │  for trend display. This aligns sweat measurements with the
+        │  systemic cortisol timeline for more accurate trend plotting.
+        │
+        ▼
+Step 8: Confidence scoring
         │  confidence = contact_quality × temp_penalty × gsr_penalty
+        │                × lag_penalty
         │
         │  Penalize readings taken in extreme conditions:
         │  - Contact quality < 50%: discard reading entirely
         │  - Temperature outside 20-37°C: reduce confidence
         │  - GSR near zero (no sweat detected): reduce confidence
+        │  - Lag > 20 min: reduce confidence (stale measurement)
         │
         ▼
-Final output: Sweat cortisol = XX ng/mL (confidence: high/medium/low)
+Final output: Sweat cortisol = XX ng/mL
+              Confidence: high/medium/low
+              Estimated blood time: HH:MM (measurement_time - lag)
 ```
 
 ### Example walkthrough
@@ -302,10 +336,12 @@ Final output: Sweat cortisol = XX ng/mL (confidence: high/medium/low)
 Raw reading from AD5941:
   Baseline current: 65.0 uA
   Peak current after cortisol exposure: 61.2 uA
-  Temperature: 32.5°C
+  Air temperature: 32.5°C
+  Skin temperature: 33.0°C
   Humidity: 45%
   GSR: 3.2 uS (reference: 2.8 uS)
   Contact quality: 92%
+  Measurement time: 14:30
 
 Step 1: Peak_I = 61.2 uA
 Step 2: Delta_I = 65.0 - 61.2 = 3.8 uA
@@ -315,16 +351,53 @@ Step 3: Delta_I_comp = 3.8 / (1 + 0.025 × (32.5 - 25))
 Step 4: Delta_I_comp2 = 3.2 × (1 + 0.005 × (50 - 45))
                       = 3.2 × 1.025
                       = 3.28 uA
-Step 5: Delta_I_final = 3.28 × (3.2 / 2.8)
-                      = 3.28 × 1.143
-                      = 3.75 uA
-Step 6: Conc = 10 ^ ((3.75 - 0.5) / 1.8)
-             = 10 ^ (1.806)
-             = 63.9 ng/mL
-Step 7: Confidence = 0.92 × 1.0 × 1.0 = 0.92 (high)
+Step 5: Sweat rate estimation:
+          p_skin = 610.78 × exp(17.27 × 33.0 / (33.0 + 237.3)) = 5034 Pa
+          p_ambient = (45/100) × 610.78 × exp(17.27 × 32.5 / (32.5 + 237.3))
+                    = 0.45 × 4890 = 2201 Pa
+          evap_factor = (5034 - 2201) / 3000 = 0.94  (p_ref = 3000 Pa at 50% RH, 25°C)
+          sweat_rate_proxy = (3.2 / 2.8) / (1 + 0.4 × 0.94) = 1.143 / 1.376 = 0.83
+        Dilution correction:
+          Delta_I_comp3 = 3.28 × (0.83 / 0.70)  [0.70 = reference sweat rate from calibration]
+                        = 3.28 × 1.186
+                        = 3.89 uA
+Step 6: Conc = 10 ^ ((3.89 - 0.5) / 1.8)
+             = 10 ^ (1.883)
+             = 76.4 ng/mL
+Step 7: Transport lag estimation:
+          sweat_rate ~0.83 (moderate range 0.3-1.0)
+          lag = 10 minutes
+          estimated_blood_time = 14:30 - 10 min = 14:20
+Step 8: Confidence:
+          contact = 0.92
+          temp_penalty = 1.0 (32.5°C within 20-38°C)
+          gsr_penalty = 1.0 (3.2 uS well above 0.5 threshold)
+          lag_penalty = 1.0 (10 min < 20 min threshold)
+          confidence = 0.92 × 1.0 × 1.0 × 1.0 = 0.92 (high)
 
-Output: Sweat cortisol = 63.9 ng/mL (confidence: high)
+Output: Sweat cortisol = 76.4 ng/mL (confidence: high)
+        Estimated blood time: 14:20
+        Transport lag: 10 min
 ```
+
+---
+
+## Body site and wear position
+
+CortiPod is designed and calibrated for the **volar (inner) wrist**. The personal calibration process establishes the sweat-to-saliva cortisol ratio at the wrist specifically. Moving the device to a different body site (e.g., upper arm, forehead) invalidates the calibration and requires recalibration at the new site.
+
+**Why the wrist:**
+- Social acceptability (watch form factor, always visible for glanceable data)
+- Consistent eccrine sweat production (~120 glands/cm2, moderate density)
+- Accessible for electrode swapping (user can do it one-handed)
+- Passive sweat sufficient at room temperature for most users
+- Published sweat cortisol data available for this site
+
+**Site-specific considerations:** The forehead produces 2-3x higher cortisol concentrations (higher gland density, higher sweat rate) but is impractical for continuous wear. The volar wrist has moderate concentration — well within the sensor's detection range (8-140 ng/mL) but lower than forehead or upper back. The personal calibration compensates for this automatically because the saliva-to-sweat mapping is learned *at the wrist*.
+
+**Wear consistency:** For best accuracy, wear the device on the same wrist, in the same position (1-2cm proximal to the wrist crease), every day. Sweat gland density varies even across a few centimeters of skin. Consistent placement reduces measurement-to-measurement noise.
+
+See also: `docs/sweat-cortisol-correlation-factors.md` — Factor 4 (body site consistency).
 
 ---
 
