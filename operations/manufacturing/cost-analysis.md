@@ -361,7 +361,9 @@ Pricing: $249 starter kit + $399/year subscription
 | Mfg method | Contract | Contract | Contract | Contract | Contract |
 | Cumulative gross profit | $87,000 | $554,600 | $1,658,520 | $3,771,080 | $7,432,248 |
 
-**v1 is profitable from year 1 at 27% margin**, growing to 59% as electrode COGS scales. Manufacturing requires contract production from launch (366 electrodes/day at 500 users), feasible with a partner like Zimmer & Peacock.
+**v1 is profitable from year 1 at 27% margin**, growing to 59% as electrode COGS scales.
+
+> **Update (2026-04-19):** Actual invoice data and three-way manufacturing analysis (see `manufacturing-path-comparison.md` and `prototype-spend-tracker.md`) shows that in-house production with semi-automated stations is viable and cost-effective through 10K users — contract manufacturing is not required at 500 users as originally assumed. Electrode material costs validated at C$2.76/electrode vs. the C$5.20/electrode projected here at 1K scale. The revised in-house COGS at 500 users is ~C$1.16/electrode (semi-auto) vs the C$3.24 Z&P landed cost. In-house saves C$191K/year at 500 users. Z&P NRE (C$16.5K) is best deferred until 5K+ users or when ISO 13485 certification is needed for regulatory filings. See `manufacturing-path-comparison.md` for the full analysis.
 
 ### Scenario B: Nafion upgrade — 5-day electrode life
 
